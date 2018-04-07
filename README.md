@@ -17,3 +17,5 @@ This will start a server listening on your device localhost (127.0.0.1) on the p
 ./client test 127.0.0.1 8080
 ```
 This will make a client connect to the server (which is listening on 127.0.0.1) on the specified port(8080). The first parameter is just for consistency for the [dropbox especification](https://moodle.inf.ufrgs.br/pluginfile.php/122129/mod_resource/content/1/INF01151-Trabalho_pt1-v2.pdf).
+
+Now, on the client terminal type something and press enter. The message you typed should appear on the server terminal, and the message was sent via a socket using the UDP protocol.
