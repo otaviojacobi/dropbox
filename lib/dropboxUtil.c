@@ -1,11 +1,4 @@
-#include"dropboxUtil.h"
-
-void kill(char *message)
-{
-    perror(message);
-    perror("Exiting...\n");
-    exit(-1);
-}
+#include "dropboxUtil.h"
 
 int init_socket_client(int PORT, char* SERVER, struct sockaddr_in *si_other) {
 
@@ -44,4 +37,51 @@ int init_socket_server(int PORT, struct sockaddr_in *si_me) {
         kill("An error ocurred binding the socket to the port. Make sure nothing else is listening on the same port.\n");
     
     return socket_id;
+}
+
+int command_to_action(char *command) {
+
+    string_tolower(command);
+
+    if(strcmp(command, "upload") == 0) {
+        return Upload;
+    }
+    if(strcmp(command, "download") == 0) {
+        return Download;
+    }
+    if(strcmp(command, "list_server") == 0) {
+        return List_server;
+    }
+    if(strcmp(command, "list_client") == 0) {
+        return List_client;
+    }
+    if(strcmp(command, "get_sync_dir") == 0) {
+        return Get_sync_dir;
+    }
+    if(strcmp(command, "exit") == 0) {
+        return Exit;
+    }
+    return -1;
+}
+
+void string_tolower(char *p) {
+    for ( ; *p; ++p) *p = tolower(*p);
+}
+
+void print_info(char *USER, char *version) {
+    
+    printf("Arthur Marques Medeiros - XXXXXX\n");
+    printf("Flavia de Avila Pereira - XXXXXX\n");
+    printf("Otavio Flores Jacobi - 261569\n");
+    printf("Priscila Cavalli Rachevsky - XXXXXX\n");
+    if(version != NULL)
+        printf("Welcome to Dropboxx %s. Version %s\n", USER, version);
+    else
+        printf("Welcome to Dropboxx %s. Version 1.0.0\n", USER);
+}
+
+void kill(char *message) {
+    printf("%s", message);
+    printf("Exiting...\n");
+    exit(-1);
 }

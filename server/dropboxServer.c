@@ -1,13 +1,13 @@
-#include<stdio.h>
-#include<string.h>
-#include<stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include <unistd.h>
-#include<arpa/inet.h>
-#include<sys/socket.h>
-#include"../lib/dropboxUtil.h"
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include "../lib/dropboxUtil.h"
  
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
+    
     struct sockaddr_in si_me, si_other;
     char buf[BUFLEN];
     int recv_len;
