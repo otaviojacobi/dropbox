@@ -64,6 +64,17 @@ int command_to_action(char *command) {
     return -1;
 }
 
+// TODO: Maybe we should return the id if the packet_ids match
+int check_ack(Packet *packet, int packet_id) {
+    return packet->packet_type == Ack && packet->packet_id == packet_id;
+}
+
+void clear_packet(Packet *packet) {
+    packet->packet_type = 0;
+    packet->packet_id = 0;
+    memset(packet->data,'\0', PACKAGE_SIZE - 40); //TODO: get rid of magic number 40 which stands for 32 + 8 packet size structure
+}
+
 void string_tolower(char *p) {
     for ( ; *p; ++p) *p = tolower(*p);
 }
