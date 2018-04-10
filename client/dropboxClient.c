@@ -10,7 +10,6 @@
 struct sockaddr_in si_other;
 int socket_id;
 unsigned int slen;
-char *SERVER;
 
 int main(int argc, char **argv) {
     
@@ -18,13 +17,14 @@ int main(int argc, char **argv) {
     char command_parameter[COMMAND_LENGTH];
     char exit_message[COMMAND_LENGTH];
 
-    char* USER = argv[1];
-    SERVER = argc >= 3 ? argv[2] : SERVER_DEFAULT;
+    char *USER = argv[1];
+    char *SERVER = argc >= 3 ? argv[2] : SERVER_DEFAULT;
     int PORT = argc >= 4 ? atoi(argv[3]) : DEFAULT_PORT;
     int action;
     
     slen = sizeof(si_other);
 
+    socket_id = init_socket_client(PORT, SERVER, &si_other);
     login_server(USER, PORT);
     print_info(USER, "1.0.0");
 
@@ -78,7 +78,6 @@ int login_server(char *host, int port) {
     Ack ack;
     int packet_id = 0; //TODO: fix id generation
     
-    socket_id = init_socket_client(port, SERVER, &si_other);
 
     create_packet(&login_packet, Client_login, packet_id, host); //sdds construtor
     send_packet(&login_packet);
