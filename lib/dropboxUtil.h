@@ -12,7 +12,7 @@
 #include <sys/socket.h>
 
 #define PACKAGE_SIZE 1024
-#define BUFLEN 1024 //package size and buflen should always be the same
+#define COMMAND_LENGTH 64
 #define SERVER_DEFAULT "127.0.0.1"
 #define DEFAULT_PORT 8888
 #define true 1
@@ -32,8 +32,12 @@ enum possible_actions {
 enum packet_types {
     Client_login,
     Data,
-    Ack
 } PACKET_TYPE;
+
+enum ack_types {
+    New_user,
+    Old_user
+} ACK_TYPE;
 
 typedef struct packet {
     uint8_t packet_type;
@@ -41,10 +45,16 @@ typedef struct packet {
     char data[PACKAGE_SIZE - 40];
 } Packet; //8bytes on type + 32bytes on id + 984bytes on the actual data = 1kb packet each time
 
+
+typedef struct ack {
+    unsigned int ack_type;
+    uint32_t packet_id;
+} Ack;
+
 int init_socket_client(int PORT, char *SERVER, struct sockaddr_in *si_other);
 int init_socket_server(int PORT, struct sockaddr_in *si_me);
 int command_to_action(char *command);
-int check_ack(Packet *packet, int packet_id); 
+void create_packet(Packet *packet, uint8_t type, uint32_t id, char *data);
 void clear_packet(Packet *packet);
 void string_tolower(char *p);
 void print_info(char *USER, char *version);

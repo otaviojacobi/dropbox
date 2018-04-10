@@ -62,25 +62,24 @@ void receive_file(char *file) {
 void receive_login_server(char *host, int packet_id) {
 
     int status = check_login_status(host);
-    Packet packet;
+    Ack ack;
 
     switch(status) {
         case 0:
             printf("Logged in !\n");
+            ack.ack_type = Old_user;
             break;
         case 1:
             printf("Creating new user for %s\n", host);
             create_new_user(host);
-            packet.data[0] = 'n';
+            ack.ack_type = New_user;
             break;
 
         default: printf("Failed to login.\n");
     }
 
-    packet.packet_type = Ack;
-    packet.packet_id = packet_id;
 
-    if (sendto(socket_id, &packet, PACKAGE_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
+    if (sendto(socket_id, &ack, sizeof(Ack) , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
         kill("Failed to send ack...\n");
     }

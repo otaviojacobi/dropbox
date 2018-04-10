@@ -25,4 +25,8 @@ void get_file(char *file);
 void delete_file(char *file);
 void close_session();
 
+void send_packet(Packet *packet);
+void receive_ack(Ack *ack);
+
+
 #endif

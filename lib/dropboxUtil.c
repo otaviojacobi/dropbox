@@ -64,11 +64,6 @@ int command_to_action(char *command) {
     return -1;
 }
 
-// TODO: Maybe we should return the id if the packet_ids match
-int check_ack(Packet *packet, int packet_id) {
-    return packet->packet_type == Ack && packet->packet_id == packet_id;
-}
-
 void clear_packet(Packet *packet) {
     packet->packet_type = 0;
     packet->packet_id = 0;
@@ -89,6 +84,12 @@ void print_info(char *USER, char *version) {
         printf("Welcome to Dropboxx %s. Version %s\n", USER, version);
     else
         printf("Welcome to Dropboxx %s. Version 1.0.0\n", USER);
+}
+
+void create_packet(Packet *packet, uint8_t type, uint32_t id, char *data) {
+    packet->packet_type = Client_login;
+    packet->packet_id = id; 
+    strcpy(packet->data, data);
 }
 
 void kill(char *message) {

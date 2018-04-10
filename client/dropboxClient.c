@@ -9,25 +9,24 @@
 
 struct sockaddr_in si_other;
 int socket_id;
-int slen = sizeof(si_other);
-char buf[BUFLEN];
+unsigned int slen;
 char *SERVER;
 
 int main(int argc, char **argv) {
     
-    char command[BUFLEN];
-    char command_parameter[BUFLEN];
-    char exit_message[64];
+    char command[COMMAND_LENGTH];
+    char command_parameter[COMMAND_LENGTH];
+    char exit_message[COMMAND_LENGTH];
 
     char* USER = argv[1];
     SERVER = argc >= 3 ? argv[2] : SERVER_DEFAULT;
     int PORT = argc >= 4 ? atoi(argv[3]) : DEFAULT_PORT;
-    
-    if(login_server(USER, PORT) == -1)
-        kill("Failed to conect to server");    
-    print_info(USER, "1.0.0");
-
     int action;
+    
+    slen = sizeof(si_other);
+
+    login_server(USER, PORT);
+    print_info(USER, "1.0.0");
 
     while(true) {
 
@@ -44,22 +43,18 @@ int main(int argc, char **argv) {
                 break;
 
             case Download:
-                close(socket_id);
                 printf("Not yet implemented\n");
                 break;
 
-            case List_server:
-                close(socket_id);            
+            case List_server:            
                 printf("Not yet implemented\n");            
                 break;
 
-            case List_client:
-                close(socket_id);            
+            case List_client:            
                 printf("Not yet implemented\n");            
                 break;
 
-            case Get_sync_dir:
-                close(socket_id);            
+            case Get_sync_dir:            
                 printf("Not yet implemented\n");            
                 break;
 
@@ -80,50 +75,50 @@ int main(int argc, char **argv) {
 int login_server(char *host, int port) {
 
     Packet login_packet;
+    Ack ack;
     int packet_id = 0; //TODO: fix id generation
-    //int recv_len;
     
     socket_id = init_socket_client(port, SERVER, &si_other);
 
-    login_packet.packet_type = Client_login;
-    login_packet.packet_id = packet_id; //TODO: fix id generation
-    strcpy(login_packet.data, host); 
+    create_packet(&login_packet, Client_login, packet_id, host); //sdds construtor
+    send_packet(&login_packet);
+    receive_ack(&ack);
 
-    if (sendto(socket_id, &login_packet, PACKAGE_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
-        close(socket_id);        
-        kill("Failed to login...\n");
-    }
-
-    //clear_packet(&login_packet);
-
-
-    // TODO: for some reason this doesn't work. I think the best way to move foward is to serialize or packet structure.
-    //try to receive the ack, this is a blocking call
-    // if ((recv_len = recvfrom(socket_id, &login_packet, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
-    //     kill("Failed to receive ack...\n");
-
-    // if(check_ack(&login_packet, packet_id) == false )
-    //     kill("Some packet got lost in its way...\n");
-
-    // if(login_packet.data[0] == 'n')
-    //     printf("New user created !\n");
-    
+    if(ack.packet_id == packet_id)
+       ack.ack_type == New_user ? printf("This is your first time! We're creating your account...\n")
+                                : printf("Loggin you in...\n");
+    else
+       kill("We failed to log you in. Try again later!\n");
+    //Maybe should return the packet id ?
     return 0;
 }
 
 void send_file(char *file) {
 
     //TODO: change message to actual file (this must become a while and should use the packets)
-
     Packet packet;
 
-    packet.packet_type = Data;
-    packet.packet_id = 1;
-    strcpy(packet.data, file);
+    create_packet(&packet, Data, 1, file);
 
     if (sendto(socket_id, &packet, PACKAGE_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
         kill("Failed to send data...\n");
     }
-
 }
+
+void send_packet(Packet *packet) {
+    
+    if (sendto(socket_id, packet, PACKAGE_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
+        close(socket_id);        
+        kill("Failed to login...\n");
+    }
+}
+
+void receive_ack(Ack *ack) {
+
+    int recv_len;
+    //try to receive the ack, this is a blocking call
+    if ((recv_len = recvfrom(socket_id, ack, sizeof(Ack), 0, (struct sockaddr *) &si_other, &slen)) == -1)
+        kill("Failed to receive ack...\n");
+}
+
