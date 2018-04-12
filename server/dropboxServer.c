@@ -38,10 +38,10 @@ int main(int argc, char **argv) {
         printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
         
         switch(packet.packet_type) {
-            case Client_login:
+            case Client_login_type:
                 receive_login_server(packet.data, packet.packet_id);
                 break;
-            case Data:
+            case Data_type:
                 receive_file(packet.data);
                 break;
             default: printf("The packet type is not supported!\n");
@@ -63,21 +63,21 @@ void receive_login_server(char *host, int packet_id) {
 
     int status = check_login_status(host);
     Ack ack;
+    ack.packet_type = Ack_type;
 
     switch(status) {
-        case 0:
+        case Old_user:
             printf("Logged in !\n");
-            ack.ack_type = Old_user;
+            ack.util = Old_user;
             break;
-        case 1:
+        case New_user:
             printf("Creating new user for %s\n", host);
+            ack.util = New_user;            
             create_new_user(host);
-            ack.ack_type = New_user;
             break;
 
         default: printf("Failed to login.\n");
     }
-
 
     if (sendto(socket_id, &ack, sizeof(Ack) , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
@@ -91,10 +91,10 @@ int check_login_status(char *host) {
 
     if (dir) { // Directory exists.
         closedir(dir);
-        return 0;
+        return Old_user;
     }
     if (ENOENT == errno) {  // Directory does not exist. 
-        return 1;
+        return New_user;
     }
     else { // opendir() failed for some other reason.
         return -1;

@@ -30,14 +30,15 @@ enum possible_actions {
 
 //packet types
 enum packet_types {
-    Client_login,
-    Data,
+    Client_login_type,
+    Data_type,
+    Ack_type
 } PACKET_TYPE;
 
-enum ack_types {
-    New_user,
-    Old_user
-} ACK_TYPE;
+enum login_types {
+    Old_user,
+    New_user
+} LOGIN_TYPE;
 
 typedef struct packet {
     uint8_t packet_type;
@@ -47,7 +48,8 @@ typedef struct packet {
 
 
 typedef struct ack {
-    unsigned int ack_type;
+    uint8_t packet_type;
+    uint8_t util;
     uint32_t packet_id;
 } Ack;
 

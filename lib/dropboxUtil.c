@@ -87,7 +87,7 @@ void print_info(char *USER, char *version) {
 }
 
 void create_packet(Packet *packet, uint8_t type, uint32_t id, char *data) {
-    packet->packet_type = Client_login;
+    packet->packet_type = type;
     packet->packet_id = id; 
     strcpy(packet->data, data);
 }

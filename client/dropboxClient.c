@@ -74,20 +74,24 @@ int main(int argc, char **argv) {
 
 int login_server(char *host, int port) {
 
+    char buffer[PACKAGE_SIZE];
     Packet login_packet;
     Ack ack;
     int packet_id = 0; //TODO: fix id generation
     
-
-    create_packet(&login_packet, Client_login, packet_id, host); //sdds construtor
+    create_packet(&login_packet, Client_login_type, packet_id, host); //sdds construtor
     send_packet(&login_packet);
-    receive_ack(&ack);
+    receive_packet(buffer);
 
-    if(ack.packet_id == packet_id)
-       ack.ack_type == New_user ? printf("This is your first time! We're creating your account...\n")
-                                : printf("Loggin you in...\n");
-    else
+
+    if((uint8_t)buffer[0] == Ack_type) {
+        memcpy(&ack, buffer, sizeof(ack));
+        ack.util == New_user ? printf("This is your first time! We're creating your account...\n")
+                             : printf("Loggin you in...\n");
+    }
+    else {
        kill("We failed to log you in. Try again later!\n");
+    }
     //Maybe should return the packet id ?
     return 0;
 }
@@ -97,7 +101,7 @@ void send_file(char *file) {
     //TODO: change message to actual file (this must become a while and should use the packets)
     Packet packet;
 
-    create_packet(&packet, Data, 1, file);
+    create_packet(&packet, Data_type, 1, file);
 
     if (sendto(socket_id, &packet, PACKAGE_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
@@ -113,11 +117,11 @@ void send_packet(Packet *packet) {
     }
 }
 
-void receive_ack(Ack *ack) {
-
+void receive_packet(char *buffer) {
     int recv_len;
     //try to receive the ack, this is a blocking call
-    if ((recv_len = recvfrom(socket_id, ack, sizeof(Ack), 0, (struct sockaddr *) &si_other, &slen)) == -1)
+
+    if ((recv_len = recvfrom(socket_id, buffer, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
         kill("Failed to receive ack...\n");
 }
 
