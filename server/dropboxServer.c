@@ -4,16 +4,19 @@
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
+#include <limits.h>
+#include <math.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "../lib/dropboxUtil.h"
 #include "dropboxServer.h"
- 
+
 int socket_id;
 struct sockaddr_in si_me, si_other;
 unsigned int slen;
+char *clients[100000];
 
 int main(int argc, char **argv) {
     
@@ -25,6 +28,7 @@ int main(int argc, char **argv) {
      
     //create a UDP socket
     socket_id = init_socket_server(PORT, &si_me);
+    Ack ack;
 
     //keep listening for data
     printf("Listening on port %d...\n", PORT);
@@ -39,24 +43,100 @@ int main(int argc, char **argv) {
         
         switch(packet.packet_type) {
             case Client_login_type:
+                bind_user_to_server(packet.data);
                 receive_login_server(packet.data, packet.packet_id);
                 break;
+            case Header_type:
+                ack.packet_type = Ack_type;
+                ack.packet_id = packet.packet_id;
+                ack.util = packet.packet_info;
+                send_ack(&ack);
+                receive_file(packet.data, packet.packet_info, packet.packet_id);
+                break;
+            
             case Data_type:
-                receive_file(packet.data);
+                printf("%s\n", packet.data);
                 break;
             default: printf("The packet type is not supported!\n");
         }
 
-	    clear_packet(&packet);
     }
  
     close(socket_id);
     return 0;
 }
 
-//TODO: send the real file.
-void receive_file(char *file) {
-    printf("%s\n", file);
+//TODO: receive the real file.
+void receive_file(char *file, uint32_t file_size, uint32_t id) {
+
+    char *path_file = (char *) malloc(strlen(file) + strlen(clients[htons(si_other.sin_port)]) + 1);
+    path_file[0] = '\0';
+    strcat(path_file, clients[htons(si_other.sin_port)]);
+    strcat(path_file, "/");
+    strcat(path_file, file);
+    
+    FILE *file_opened = fopen(path_file, "w+");
+    
+    char buf[PACKAGE_SIZE];
+
+    uint32_t block_amount = ceil(file_size/sizeof(buf));
+    
+    Ack ack;
+    Packet packet;
+    int packets_received = 0;
+    
+    int debug = 0;
+    if (file_opened) {
+            printf("%d\n", receive_packet(buf));
+        do {
+            ack.packet_type = Ack_type;
+            if((uint8_t)buf[0] == Data_type) {
+                memcpy(&packet, buf, PACKAGE_SIZE);
+                UM_BOM_PRINT(packet.data);
+                kill("ACABEI\n");
+                fwrite(packet.data,1 , DATA_PACKAGE_SIZE, file_opened);
+
+                ack.packet_id = packet.packet_id;
+                ack.util = packet.packet_info;
+                send_ack(&ack);
+                packets_received++;
+            } else if((uint8_t)buf[0] == Header_type) {
+                ack.packet_id = id;
+                ack.util = file_size;
+                send_ack(&ack);
+            }
+        } while(packets_received < block_amount);
+
+        //last block
+        printf("VOU ESPERAR\n");
+        receive_packet(buf);
+        printf("VOU PARAR DE ESPERAR\n");
+        memcpy(&packet, buf, PACKAGE_SIZE);
+        fwrite(packet.data, 1, file_size-((block_amount-1) * DATA_PACKAGE_SIZE), file_opened);
+        printf("OI: %s\n", packet.data);   
+        printf("TCHAU: %s\n", buf);
+
+        for(; debug < 200; debug++) {
+            ack.packet_type = Ack_type;
+            ack.packet_id = packet.packet_id;
+            ack.util = packet.packet_info;
+            send_ack(&ack);
+        }
+
+        fclose(file_opened);
+
+        if (ferror(file_opened)) {
+            kill("Error writing file\n");
+        }
+    }
+}
+
+void send_ack(Ack *ack) {
+    
+    if (sendto(socket_id, ack, sizeof(Ack) , 0 , (struct sockaddr *) &si_other, slen) == -1) {
+        close(socket_id);        
+        kill("Failed to send ack...\n");
+    }
 }
 
 void receive_login_server(char *host, int packet_id) {
@@ -96,11 +176,31 @@ int check_login_status(char *host) {
     if (ENOENT == errno) {  // Directory does not exist. 
         return New_user;
     }
-    else { // opendir() failed for some other reason.
+    else { // opendir() failed for some other reason.PACKAGE_SIZE
         return -1;
     }
 }
 
 void create_new_user(char *host) {
     mkdir(host, 0700);
+}
+
+void bind_user_to_server(char *user_name) {
+
+    printf("%d\n", ntohs(si_other.sin_port));
+    clients[ntohs(si_other.sin_port)] =  strdup(user_name);
+    printf("Binded %d to %s\n", ntohs(si_other.sin_port), user_name);
+
+}
+
+int receive_packet(char *buffer) {
+    int recv_len;
+    //try to receive the ack, this is a blocking call
+
+    if ((recv_len = recvfrom(socket_id, buffer, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
+        kill("Failed to receive ack...\n");
+
+
+    return recv_len;
+    
 }

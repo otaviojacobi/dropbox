@@ -79,21 +79,39 @@ void print_info(char *USER, char *version) {
     printf("Arthur Marques Medeiros - XXXXXX\n");
     printf("Flavia de Avila Pereira - XXXXXX\n");
     printf("Otavio Flores Jacobi - 261569\n");
-    printf("Priscila Cavalli Rachevsky - XXXXXX\n");
+    printf("Priscila Cavalli Rachevsky - 261573\n");
     if(version != NULL)
         printf("Welcome to Dropboxx %s. Version %s\n", USER, version);
     else
         printf("Welcome to Dropboxx %s. Version 1.0.0\n", USER);
 }
 
-void create_packet(Packet *packet, uint8_t type, uint32_t id, char *data) {
+void create_packet(Packet *packet, uint8_t type, uint32_t id, uint32_t info, char *data) {
     packet->packet_type = type;
     packet->packet_id = id; 
-    strcpy(packet->data, data);
+    packet->packet_info = info;
+
+    memcpy(packet->data, data,  DATA_PACKAGE_SIZE);
+    
 }
 
 void kill(char *message) {
     printf("%s", message);
     printf("Exiting...\n");
     exit(-1);
+}
+
+long get_file_size(FILE *file) {
+    fseek(file, 0, SEEK_END);
+    long file_size = ftell(file);
+    rewind(file);
+    return file_size;
+    
+}
+
+void UM_BOM_PRINT(char *UMA_BOA_STRING) {
+    int debug;
+    for(debug = 0; debug < DATA_PACKAGE_SIZE; debug++) printf("%c", UMA_BOA_STRING[debug]);
+    printf("\n");
+
 }
