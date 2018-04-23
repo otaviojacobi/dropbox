@@ -12,8 +12,8 @@
 #include <sys/socket.h>
 
 #define PACKAGE_SIZE 1024
-#define PACKAGE_HEADER_SIZE 9 //TODO: update this constantly
-#define DATA_PACKAGE_SIZE PACKAGE_SIZE - PACKAGE_HEADER_SIZE
+#define PACKAGE_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
+#define DATA_PACKAGE_SIZE 1024-12 //PACKAGE_SIZE-PACKAGE_HEADER_SIZE
 
 #define MAXNAME 100
 #define MAXFILES 100
@@ -65,7 +65,7 @@ enum login_types {
 typedef struct packet {
     uint8_t packet_type;
     uint32_t packet_id;
-    uint32_t packet_info; //For header means size and for data menas file order
+    uint32_t packet_info; //For header means size and for data means file order
     char data[DATA_PACKAGE_SIZE];
 } Packet;
 

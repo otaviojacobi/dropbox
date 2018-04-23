@@ -16,7 +16,7 @@
 int socket_id;
 struct sockaddr_in si_me, si_other;
 unsigned int slen;
-char *clients[100000];
+char *clients[100000]; // nao seria melhor uma lista encadeada?
 
 int main(int argc, char **argv) {
     

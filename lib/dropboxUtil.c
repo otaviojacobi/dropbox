@@ -67,7 +67,7 @@ int command_to_action(char *command) {
 void clear_packet(Packet *packet) {
     packet->packet_type = 0;
     packet->packet_id = 0;
-    memset(packet->data,'\0', PACKAGE_SIZE - 40); //TODO: get rid of magic number 40 which stands for 32 + 8 packet size structure
+    memset(packet->data,'\0', DATA_PACKAGE_SIZE); //TODO: get rid of magic number 40 which stands for 32 + 8 packet size structure
 }
 
 void string_tolower(char *p) {
@@ -77,7 +77,7 @@ void string_tolower(char *p) {
 void print_info(char *USER, char *version) {
     
     printf("Arthur Marques Medeiros - XXXXXX\n");
-    printf("Flavia de Avila Pereira - XXXXXX\n");
+    printf("Flavia de Avila Pereira - 136866\n");
     printf("Otavio Flores Jacobi - 261569\n");
     printf("Priscila Cavalli Rachevsky - 261573\n");
     if(version != NULL)
@@ -110,8 +110,9 @@ long get_file_size(FILE *file) {
 }
 
 void UM_BOM_PRINT(char *UMA_BOA_STRING) {
+    //printf("(len = %d)%s_\n\n", strlen(UMA_BOA_STRING), UMA_BOA_STRING);
     int debug;
     for(debug = 0; debug < DATA_PACKAGE_SIZE; debug++) printf("%c", UMA_BOA_STRING[debug]);
-    printf("\n");
+    printf("_\n");
 
 }
