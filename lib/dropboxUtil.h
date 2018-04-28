@@ -12,9 +12,9 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
-#define PACKAGE_SIZE 1024
-#define PACKAGE_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
-#define DATA_PACKAGE_SIZE 1024-12 //PACKAGE_SIZE-PACKAGE_HEADER_SIZE
+#define PACKET_SIZE 1024
+#define PACKET_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
+#define DATA_PACKET_SIZE 1024-12 //PACKET_SIZE-PACKET_HEADER_SIZE
 
 #define MAXNAME 100
 #define MAXFILES 100
@@ -67,7 +67,7 @@ typedef struct packet {
     uint8_t packet_type;
     uint32_t packet_id;
     uint32_t packet_info; //For header means size and for data means file order
-    char data[DATA_PACKAGE_SIZE];
+    char data[DATA_PACKET_SIZE];
 } Packet;
 
 

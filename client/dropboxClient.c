@@ -79,7 +79,7 @@ int main(int argc, char **argv) {
 
 int login_server(char *host, int port) {
 
-    char buf[PACKAGE_SIZE];
+    char buf[PACKET_SIZE];
     Packet login_packet;
     Ack ack;
     
@@ -103,8 +103,8 @@ void send_file(char *file_name) {
     Packet packet;
     Ack ack;
     FILE *file = fopen(file_name, "rb");
-    char buf[PACKAGE_SIZE];
-    char buf_data[DATA_PACKAGE_SIZE];
+    char buf[PACKET_SIZE];
+    char buf_data[DATA_PACKET_SIZE];
     uint32_t file_size = get_file_size(file);
     uint32_t file_pos = 0;
     uint32_t block_amount = ceil(file_size/sizeof(buf_data));
@@ -116,7 +116,7 @@ void send_file(char *file_name) {
     //Send all file data in block_amount packets
     if (file) {
         while (file_pos <= block_amount) {
-            fread(buf_data, 1, DATA_PACKAGE_SIZE, file);
+            fread(buf_data, 1, DATA_PACKET_SIZE, file);
             create_packet(&packet, Data_type, get_id(), file_pos, buf_data);
             await_send_packet(&packet, &ack, buf);
             file_pos++;
@@ -134,7 +134,7 @@ void await_send_packet(Packet *packet, Ack *ack, char *buf) {
     
     do {
         send_packet(packet);
-        recieve_status = recvfrom(socket_id, buf, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen);
+        recieve_status = recvfrom(socket_id, buf, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen);
         if(recieve_status >= 0 && (uint8_t) buf[0] == Ack_type) {
             memcpy(ack, buf, sizeof(Ack));
             isValidAck = match_ack_packet(ack, packet);
@@ -143,10 +143,10 @@ void await_send_packet(Packet *packet, Ack *ack, char *buf) {
 }
 
 void send_packet(Packet *packet) {
-    char buf[PACKAGE_SIZE];
-    memcpy(buf, packet, PACKAGE_SIZE);
+    char buf[PACKET_SIZE];
+    memcpy(buf, packet, PACKET_SIZE);
     
-    if (sendto(socket_id, buf, PACKAGE_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
+    if (sendto(socket_id, buf, PACKET_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
         kill("Failed to login...\n");
     }

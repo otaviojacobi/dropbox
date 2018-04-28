@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
     while(true) {
 
         //try to receive some data, this is a blocking call
-        if ((recv_len = recvfrom(socket_id, &packet, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
+        if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
             kill("Failed to receive data...\n");
 
         //print details of the client/peer and the data received
@@ -74,8 +74,8 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
     get_full_path_file(path_file, file);
     FILE *file_opened = fopen(path_file, "w+");
     
-    char buf[PACKAGE_SIZE];
-    char buf_data[DATA_PACKAGE_SIZE];
+    char buf[PACKET_SIZE];
+    char buf_data[DATA_PACKET_SIZE];
 
     uint32_t block_amount = ceil(file_size/sizeof(buf_data));
     
@@ -86,31 +86,27 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
     if (file_opened) {
         do {
             receive_packet(buf);
-
+            memcpy(&packet, buf, PACKET_SIZE);
             ack.packet_type = Ack_type;
-            if(packets_received != block_amount && block_amount != 1) {
+            if(packets_received != block_amount) {
                 if((uint8_t)buf[0] == Data_type) {
-                    memcpy(&packet, buf, PACKAGE_SIZE);
-                    fwrite(packet.data,1 , DATA_PACKAGE_SIZE, file_opened);
+                    fwrite(packet.data,1 , DATA_PACKET_SIZE, file_opened);
 
                     ack.packet_id = packet.packet_id;
                     ack.util = packet.packet_info;
-                    send_ack(&ack);
                     packets_received++;
                 } else if((uint8_t)buf[0] == Header_type) {
                     ack.packet_id = id;
                     ack.util = file_size;
-                    send_ack(&ack);
-                }
+                } else kill("Unexpected packet type when receiving file");
             } else {
-                memcpy(&packet, buf, PACKAGE_SIZE);
                 fwrite(packet.data, 1, file_size-((block_amount) * sizeof(buf_data)), file_opened);
 
                 ack.packet_id = packet.packet_id;
                 ack.util = packet.packet_info;
-                send_ack(&ack);
                 packets_received++;
             }
+            send_ack(&ack);
         } while(packets_received <= block_amount);
 
         fclose(file_opened);
@@ -167,7 +163,7 @@ int check_login_status(char *host) {
     if (ENOENT == errno) {  // Directory does not exist. 
         return New_user;
     }
-    else { // opendir() failed for some other reason.PACKAGE_SIZE
+    else { // opendir() failed for some other reason.PACKET_SIZE
         return -1;
     }
 }
@@ -187,7 +183,7 @@ int receive_packet(char *buffer) {
     int recv_len;
 
     //try to receive the ack, this is a blocking call
-    if ((recv_len = recvfrom(socket_id, buffer, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
+    if ((recv_len = recvfrom(socket_id, buffer, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
         kill("Failed to receive ack...\n");
 
     return recv_len;

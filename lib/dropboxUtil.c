@@ -68,7 +68,7 @@ int command_to_action(char *command) {
 void clear_packet(Packet *packet) {
     packet->packet_type = 0;
     packet->packet_id = 0;
-    memset(packet->data,'\0', DATA_PACKAGE_SIZE); //TODO: get rid of magic number 40 which stands for 32 + 8 packet size structure
+    memset(packet->data,'\0', DATA_PACKET_SIZE); //TODO: get rid of magic number 40 which stands for 32 + 8 packet size structure
 }
 
 void string_tolower(char *p) {
@@ -91,7 +91,7 @@ void create_packet(Packet *packet, uint8_t type, uint32_t id, uint32_t info, cha
     packet->packet_type = type;
     packet->packet_id = id; 
     packet->packet_info = info;
-    memcpy(packet->data, data,  DATA_PACKAGE_SIZE);
+    memcpy(packet->data, data,  DATA_PACKET_SIZE);
 }
 
 void kill(char *message) {
