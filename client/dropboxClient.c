@@ -104,51 +104,59 @@ int login_server(char *host, int port) {
     return 0;
 }
 
-void send_file(char *file_name) {
+int matchingAckAndPacket(Ack ack, Packet packet) {
+    return ((ack.packet_id == packet.packet_id) && (ack.util == packet.packet_info));
+}
 
-    FILE *file = fopen(file_name, "rb");
-    char buf[DATA_PACKAGE_SIZE];
-    char buf_received[PACKAGE_SIZE];
-    uint32_t file_pos = 0;
-    Packet packet;
-    Ack ack;
-    int recieve_status;
-    int isValidAck = false;
-    uint32_t file_size = get_file_size(file);
-
-    create_packet(&packet, Header_type, get_id(), file_size, file_name);
-    
+void send_file(char *file_name) {    
     struct timeval tv;
     tv.tv_sec = 0;
     tv.tv_usec = ACK_TIME_OUT;
     if (setsockopt(socket_id, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
         kill("Error setting socket timeout\n");
     }
+
+    //Send the header packet
+    Packet packet;
+    Ack ack;
+    FILE *file = fopen(file_name, "rb");
+    uint32_t id = get_id();
+    uint32_t file_size = get_file_size(file);
+    int recieve_status;
+    int isValidAck = false;
+    char buf[PACKAGE_SIZE];
+
+    create_packet(&packet, Header_type, id, file_size, file_name);
     do {
         send_packet(&packet);
-        recieve_status= recvfrom(socket_id, buf_received, sizeof(buf_received), 0, (struct sockaddr *) &si_other, &slen);
+        recieve_status = recvfrom(socket_id, buf, sizeof(buf), 0, (struct sockaddr *) &si_other, &slen);
 
-        if(recieve_status >= 0 && (uint8_t) buf_received[0] == Ack_type) {
-            memcpy(&ack, buf_received, sizeof(Ack));
-            isValidAck = ((ack.packet_id == packet.packet_id) && (ack.util == packet.packet_info));
+        if(recieve_status >= 0 && (uint8_t) buf[0] == Ack_type) {
+            memcpy(&ack, buf, sizeof(Ack));
+            isValidAck = matchingAckAndPacket(ack, packet);
         }
 
-    }while(!isValidAck);    
+    } while(!isValidAck);
+
+
+    //Send all data in block_amount packets
+    char bufData[DATA_PACKAGE_SIZE];
+    uint32_t file_pos = 0;
+    uint32_t block_amount = ceil(file_size/sizeof(bufData));
+
     if (file) {
-        while (fread(buf, 1, DATA_PACKAGE_SIZE, file) == DATA_PACKAGE_SIZE) {
+        while (file_pos <= block_amount) {
+            fread(bufData, 1, DATA_PACKAGE_SIZE, file);
             isValidAck = false;
             do {
-                create_packet(&packet, Data_type, get_id(), file_pos, buf);
-                //UM_BOM_PRINT(buf);
-                UM_BOM_PRINT(packet.data);
+                create_packet(&packet, Data_type, id, file_pos, bufData);
                 send_packet(&packet);
-                kill("PORQUE\n");
 
 
-                recieve_status= recvfrom(socket_id, buf_received, sizeof(buf_received), 0, (struct sockaddr *) &si_other, &slen);
-                if(recieve_status >= 0 && (uint8_t) buf_received[0] == Ack_type) {
-                    memcpy(&ack, buf_received, sizeof(Ack));
-                    isValidAck = ((ack.packet_id == packet.packet_id) && (ack.util == packet.packet_info));
+                recieve_status= recvfrom(socket_id, buf, sizeof(buf), 0, (struct sockaddr *) &si_other, &slen);
+                if(recieve_status >= 0 && (uint8_t) buf[0] == Ack_type) {
+                    memcpy(&ack, buf, sizeof(Ack));
+                    isValidAck = matchingAckAndPacket(ack, packet);
                 }
             } while(!isValidAck);
             file_pos++;
@@ -161,9 +169,7 @@ void send_file(char *file_name) {
 }
 
 void send_packet(Packet *packet) {
-
     char buf[PACKAGE_SIZE];
-
     memcpy(buf, packet, PACKAGE_SIZE);
     
     if (sendto(socket_id, buf, PACKAGE_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
@@ -175,8 +181,8 @@ void send_packet(Packet *packet) {
 
 void receive_packet(char *buffer) {
     int recv_len;
-    //try to receive the ack, this is a blocking call
 
+    //try to receive the ack, this is a blocking call
     if ((recv_len = recvfrom(socket_id, buffer, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
         kill("Failed to receive ack...\n");
 }
