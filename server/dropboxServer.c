@@ -46,6 +46,7 @@ int main(int argc, char **argv) {
                 bind_user_to_server(packet.data);
                 receive_login_server(packet.data, packet.packet_id);
                 break;
+
             case Header_type:
                 ack.packet_type = Ack_type;
                 ack.packet_id = packet.packet_id;
@@ -57,6 +58,7 @@ int main(int argc, char **argv) {
             case Data_type:
                 printf("Error: not supposed to be Data_type case\n");
                 break;
+
             default: printf("The packet type is not supported!\n");
         }
 
@@ -80,13 +82,13 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
     Ack ack;
     Packet packet;
     int packets_received = 0;
-    
+
     if (file_opened) {
         do {
             receive_packet(buf);
 
-            if(packets_received != block_amount) {
-                ack.packet_type = Ack_type;
+            ack.packet_type = Ack_type;
+            if(packets_received != block_amount && block_amount != 1) {
                 if((uint8_t)buf[0] == Data_type) {
                     memcpy(&packet, buf, PACKAGE_SIZE);
                     fwrite(packet.data,1 , DATA_PACKAGE_SIZE, file_opened);
@@ -100,9 +102,7 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
                     ack.util = file_size;
                     send_ack(&ack);
                 }
-            } 
-            //last block
-            else {
+            } else {
                 memcpy(&packet, buf, PACKAGE_SIZE);
                 fwrite(packet.data, 1, file_size-((block_amount) * sizeof(buf_data)), file_opened);
 

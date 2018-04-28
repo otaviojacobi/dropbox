@@ -109,22 +109,21 @@ void send_file(char *file_name) {
     Ack ack;
     FILE *file = fopen(file_name, "rb");
     char buf[PACKAGE_SIZE];
+    char buf_data[DATA_PACKAGE_SIZE];
     uint32_t id = get_id();
     uint32_t file_size = get_file_size(file);
+    uint32_t file_pos = 0;
+    uint32_t block_amount = ceil(file_size/sizeof(buf_data));
 
     //file header packet
     create_packet(&packet, Header_type, id, file_size, file_name);
     await_send_packet(&packet, &ack, buf);
-    
-    //Send all file data in block_amount packets
-    char bufData[DATA_PACKAGE_SIZE];
-    uint32_t file_pos = 0;
-    uint32_t block_amount = ceil(file_size/sizeof(bufData));
 
+    //Send all file data in block_amount packets
     if (file) {
         while (file_pos <= block_amount) {
-            fread(bufData, 1, DATA_PACKAGE_SIZE, file);
-            create_packet(&packet, Data_type, id, file_pos, bufData);
+            fread(buf_data, 1, DATA_PACKAGE_SIZE, file);
+            create_packet(&packet, Data_type, id, file_pos, buf_data);
             await_send_packet(&packet, &ack, buf);
             file_pos++;
         }
