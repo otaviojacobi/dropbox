@@ -15,6 +15,7 @@ int init_socket_client(int PORT, char* SERVER, struct sockaddr_in *si_other) {
     if (inet_aton(SERVER , &si_other->sin_addr) == 0) 
         kill("An error ocurred while connecting to the server.\n");
     
+    set_socket_timeout(socket_id);
     return socket_id;
 }
 
@@ -115,4 +116,13 @@ void UM_BOM_PRINT(char *UMA_BOA_STRING) {
     for(debug = 0; debug < DATA_PACKAGE_SIZE; debug++) printf("%c", UMA_BOA_STRING[debug]);
     printf("_\n");
 
+}
+
+void set_socket_timeout(int socket_id) {
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = ACK_TIME_OUT;
+    if (setsockopt(socket_id, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+        kill("Error setting socket timeout\n");
+    }
 }

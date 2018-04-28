@@ -8,6 +8,7 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <sys/time.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
@@ -86,5 +87,5 @@ void print_info(char *USER, char *version);
 void kill(char *message);
 long get_file_size(FILE *file);
 void UM_BOM_PRINT(char *UMA_BOA_STRING);
-
+void set_socket_timeout(int socket_id);
 #endif

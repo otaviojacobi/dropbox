@@ -109,12 +109,6 @@ int matchingAckAndPacket(Ack ack, Packet packet) {
 }
 
 void send_file(char *file_name) {    
-    struct timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = ACK_TIME_OUT;
-    if (setsockopt(socket_id, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
-        kill("Error setting socket timeout\n");
-    }
 
     //Send the header packet
     Packet packet;
