@@ -1,6 +1,18 @@
 #ifndef _DROPBOXCLIENT_H_
 #define _DROPBOXCLIENT_H_
 
+#include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdint.h>
+#include <math.h>
+#include <pthread.h>
+#include <arpa/inet.h>
+#include <sys/socket.h>
+#include <sys/time.h>
+#include "../lib/dropboxUtil.h"
+
 
 int login_server(char *host, int port);
 void sync_client();

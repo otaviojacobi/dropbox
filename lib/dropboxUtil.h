@@ -8,9 +8,11 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <pthread.h>
 #include <sys/time.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
+
 
 #define PACKET_SIZE 1024
 #define PACKET_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes

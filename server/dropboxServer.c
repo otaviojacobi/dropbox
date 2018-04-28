@@ -1,15 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <dirent.h>
-#include <errno.h>
-#include <limits.h>
-#include <math.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "../lib/dropboxUtil.h"
 #include "dropboxServer.h"
 

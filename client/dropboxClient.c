@@ -1,13 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <math.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include "../lib/dropboxUtil.h"
 #include "dropboxClient.h"
 
 struct sockaddr_in si_other;
@@ -132,16 +122,16 @@ void send_file(char *file_name) {
 
 void await_send_packet(Packet *packet, Ack *ack, char *buf) {
     int recieve_status;
-    int isValidAck = false;
+    int is_valid_ack = false;
     
     do {
         send_packet(packet);
         recieve_status = recvfrom(socket_id, buf, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen);
         if(recieve_status >= 0 && buf[0] == Ack_type) {
             memcpy(ack, buf, sizeof(Ack));
-            isValidAck = match_ack_packet(ack, packet);
+            is_valid_ack = match_ack_packet(ack, packet);
         }
-    } while(!isValidAck);
+    } while(!is_valid_ack);
 }
 
 void send_packet(Packet *packet) {
@@ -157,4 +147,3 @@ void send_packet(Packet *packet) {
 uint32_t get_id() {
     return ++next_id;
 }
-
