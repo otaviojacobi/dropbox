@@ -83,17 +83,16 @@ int main(int argc, char **argv) {
 
 int login_server(char *host, int port) {
 
-    char buffer[PACKAGE_SIZE];
+    char buf[PACKAGE_SIZE];
     Packet login_packet;
     Ack ack;
     int packet_id = get_id();
     
     create_packet(&login_packet, Client_login_type, packet_id, 0, host); //sdds construtor
-    send_packet(&login_packet);
-    receive_packet(buffer); //TODO : Timelimit
+    await_send_packet(&login_packet, &ack, buf);
 
-    if((uint8_t)buffer[0] == Ack_type) {
-        memcpy(&ack, buffer, sizeof(ack));
+    if((uint8_t)buf[0] == Ack_type) {
+        memcpy(&ack, buf, sizeof(ack));
         ack.util == New_user ? printf("This is your first time! We're creating your account...\n")
                              : printf("Loggin you in...\n");
     }
@@ -106,29 +105,18 @@ int login_server(char *host, int port) {
 
 void send_file(char *file_name) {    
 
-    //Send the header packet
     Packet packet;
     Ack ack;
     FILE *file = fopen(file_name, "rb");
+    char buf[PACKAGE_SIZE];
     uint32_t id = get_id();
     uint32_t file_size = get_file_size(file);
-    int recieve_status;
-    int isValidAck = false;
-    char buf[PACKAGE_SIZE];
 
+    //file header packet
     create_packet(&packet, Header_type, id, file_size, file_name);
-    do {
-        send_packet(&packet);
-        recieve_status = recvfrom(socket_id, buf, sizeof(buf), 0, (struct sockaddr *) &si_other, &slen);
-
-        if(recieve_status >= 0 && (uint8_t) buf[0] == Ack_type) {
-            memcpy(&ack, buf, sizeof(Ack));
-            isValidAck = match_ack_packet(&ack,&packet);
-        }
-    } while(!isValidAck);
-
-
-    //Send all data in block_amount packets
+    await_send_packet(&packet, &ack, buf);
+    
+    //Send all file data in block_amount packets
     char bufData[DATA_PACKAGE_SIZE];
     uint32_t file_pos = 0;
     uint32_t block_amount = ceil(file_size/sizeof(bufData));
@@ -136,18 +124,8 @@ void send_file(char *file_name) {
     if (file) {
         while (file_pos <= block_amount) {
             fread(bufData, 1, DATA_PACKAGE_SIZE, file);
-            isValidAck = false;
-            do {
-                create_packet(&packet, Data_type, id, file_pos, bufData);
-                send_packet(&packet);
-
-
-                recieve_status= recvfrom(socket_id, buf, sizeof(buf), 0, (struct sockaddr *) &si_other, &slen);
-                if(recieve_status >= 0 && (uint8_t) buf[0] == Ack_type) {
-                    memcpy(&ack, buf, sizeof(Ack));
-                    isValidAck = match_ack_packet(&ack,&packet);
-                }
-            }while(!isValidAck);
+            create_packet(&packet, Data_type, id, file_pos, bufData);
+            await_send_packet(&packet, &ack, buf);
             file_pos++;
         }
         if (ferror(file)) {
@@ -155,6 +133,20 @@ void send_file(char *file_name) {
         }
         fclose(file);
     }
+}
+
+void await_send_packet(Packet *packet, Ack *ack, char *buf) {
+    int recieve_status;
+    int isValidAck = false;
+    
+    do {
+        send_packet(packet);
+        recieve_status = recvfrom(socket_id, buf, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen);
+        if(recieve_status >= 0 && (uint8_t) buf[0] == Ack_type) {
+            memcpy(ack, buf, sizeof(Ack));
+            isValidAck = match_ack_packet(ack, packet);
+        }
+    } while(!isValidAck);
 }
 
 void send_packet(Packet *packet) {
@@ -165,14 +157,4 @@ void send_packet(Packet *packet) {
         close(socket_id);        
         kill("Failed to login...\n");
     }
-
 }
-
-void receive_packet(char *buffer) {
-    int recv_len;
-
-    //try to receive the ack, this is a blocking call
-    if ((recv_len = recvfrom(socket_id, buffer, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
-        kill("Failed to receive ack...\n");
-}
-

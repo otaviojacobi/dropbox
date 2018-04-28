@@ -139,6 +139,7 @@ void receive_login_server(char *host, int packet_id) {
     int status = check_login_status(host);
     Ack ack;
     ack.packet_type = Ack_type;
+    ack.packet_id = packet_id;
 
     switch(status) {
         case Old_user:
@@ -185,16 +186,14 @@ void bind_user_to_server(char *user_name) {
     printf("%d\n", ntohs(si_other.sin_port));
     clients[ntohs(si_other.sin_port)] =  strdup(user_name);
     printf("Binded %d to %s\n", ntohs(si_other.sin_port), user_name);
-
 }
 
 int receive_packet(char *buffer) {
     int recv_len;
-    //try to receive the ack, this is a blocking call
 
+    //try to receive the ack, this is a blocking call
     if ((recv_len = recvfrom(socket_id, buffer, PACKAGE_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
         kill("Failed to receive ack...\n");
-
 
     return recv_len;
     

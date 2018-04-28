@@ -91,9 +91,7 @@ void create_packet(Packet *packet, uint8_t type, uint32_t id, uint32_t info, cha
     packet->packet_type = type;
     packet->packet_id = id; 
     packet->packet_info = info;
-
     memcpy(packet->data, data,  DATA_PACKAGE_SIZE);
-    
 }
 
 void kill(char *message) {
@@ -107,7 +105,6 @@ long get_file_size(FILE *file) {
     long file_size = ftell(file);
     rewind(file);
     return file_size;
-    
 }
 
 void set_socket_timeout(int socket_id) {
@@ -120,5 +117,7 @@ void set_socket_timeout(int socket_id) {
 }
 
 int match_ack_packet(Ack *ack, Packet *packet) {
-    return ((ack->packet_id == packet->packet_id) && (ack->util == packet->packet_info));
+    return packet->packet_type == Client_login_type ?
+           (ack->packet_id == packet->packet_id) :
+           ((ack->packet_id == packet->packet_id) && (ack->util == packet->packet_info));
 }
