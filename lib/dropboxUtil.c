@@ -110,14 +110,6 @@ long get_file_size(FILE *file) {
     
 }
 
-void UM_BOM_PRINT(char *UMA_BOA_STRING) {
-    //printf("(len = %d)%s_\n\n", strlen(UMA_BOA_STRING), UMA_BOA_STRING);
-    int debug;
-    for(debug = 0; debug < DATA_PACKAGE_SIZE; debug++) printf("%c", UMA_BOA_STRING[debug]);
-    printf("_\n");
-
-}
-
 void set_socket_timeout(int socket_id) {
     struct timeval tv;
     tv.tv_sec = 0;
