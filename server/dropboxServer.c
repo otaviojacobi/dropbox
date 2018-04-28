@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
                 break;
             
             case Data_type:
-                printf("%s\n", packet.data);
+                printf("Error: not supposed to be Data_type case\n");
                 break;
             default: printf("The packet type is not supported!\n");
         }
@@ -78,50 +78,45 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
     FILE *file_opened = fopen(path_file, "w+");
     
     char buf[PACKAGE_SIZE];
+    char bufData[DATA_PACKAGE_SIZE];
 
-    uint32_t block_amount = ceil(file_size/sizeof(buf));
+    uint32_t block_amount = ceil(file_size/sizeof(bufData));
     
     Ack ack;
     Packet packet;
     int packets_received = 0;
     
-    int debug = 0;
     if (file_opened) {
-            printf("%d\n", receive_packet(buf));
         do {
-            ack.packet_type = Ack_type;
-            if((uint8_t)buf[0] == Data_type) {
+            receive_packet(buf);
+
+            if(packets_received != block_amount) {
+                ack.packet_type = Ack_type;
+                if((uint8_t)buf[0] == Data_type) {
+                    memcpy(&packet, buf, PACKAGE_SIZE);
+                    fwrite(packet.data,1 , DATA_PACKAGE_SIZE, file_opened);
+
+                    ack.packet_id = packet.packet_id;
+                    ack.util = packet.packet_info;
+                    send_ack(&ack);
+                    packets_received++;
+                } else if((uint8_t)buf[0] == Header_type) {
+                    ack.packet_id = id;
+                    ack.util = file_size;
+                    send_ack(&ack);
+                }
+            } 
+            //last block
+            else {
                 memcpy(&packet, buf, PACKAGE_SIZE);
-                UM_BOM_PRINT(packet.data);
-                kill("ACABEI\n");
-                fwrite(packet.data,1 , DATA_PACKAGE_SIZE, file_opened);
+                fwrite(packet.data, 1, file_size-((block_amount) * sizeof(bufData)), file_opened);
 
                 ack.packet_id = packet.packet_id;
                 ack.util = packet.packet_info;
                 send_ack(&ack);
                 packets_received++;
-            } else if((uint8_t)buf[0] == Header_type) {
-                ack.packet_id = id;
-                ack.util = file_size;
-                send_ack(&ack);
             }
-        } while(packets_received < block_amount);
-
-        //last block
-        printf("VOU ESPERAR\n");
-        receive_packet(buf);
-        printf("VOU PARAR DE ESPERAR\n");
-        memcpy(&packet, buf, PACKAGE_SIZE);
-        fwrite(packet.data, 1, file_size-((block_amount-1) * DATA_PACKAGE_SIZE), file_opened);
-        printf("OI: %s\n", packet.data);   
-        printf("TCHAU: %s\n", buf);
-
-        for(; debug < 200; debug++) {
-            ack.packet_type = Ack_type;
-            ack.packet_id = packet.packet_id;
-            ack.util = packet.packet_info;
-            send_ack(&ack);
-        }
+        } while(packets_received <= block_amount);
 
         fclose(file_opened);
 
