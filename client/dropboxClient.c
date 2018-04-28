@@ -15,10 +15,6 @@ int socket_id;
 unsigned int slen;
 uint32_t next_id = 0;
 
-uint32_t get_id() {
-    next_id++;
-    return next_id;
-}
 
 int main(int argc, char **argv) {
     
@@ -86,9 +82,8 @@ int login_server(char *host, int port) {
     char buf[PACKAGE_SIZE];
     Packet login_packet;
     Ack ack;
-    int packet_id = get_id();
     
-    create_packet(&login_packet, Client_login_type, packet_id, 0, host); //sdds construtor
+    create_packet(&login_packet, Client_login_type, get_id(), 0, host); //sdds construtor
     await_send_packet(&login_packet, &ack, buf);
 
     if((uint8_t)buf[0] == Ack_type) {
@@ -110,20 +105,19 @@ void send_file(char *file_name) {
     FILE *file = fopen(file_name, "rb");
     char buf[PACKAGE_SIZE];
     char buf_data[DATA_PACKAGE_SIZE];
-    uint32_t id = get_id();
     uint32_t file_size = get_file_size(file);
     uint32_t file_pos = 0;
     uint32_t block_amount = ceil(file_size/sizeof(buf_data));
 
     //file header packet
-    create_packet(&packet, Header_type, id, file_size, file_name);
+    create_packet(&packet, Header_type, get_id(), file_size, file_name);
     await_send_packet(&packet, &ack, buf);
 
     //Send all file data in block_amount packets
     if (file) {
         while (file_pos <= block_amount) {
             fread(buf_data, 1, DATA_PACKAGE_SIZE, file);
-            create_packet(&packet, Data_type, id, file_pos, buf_data);
+            create_packet(&packet, Data_type, get_id(), file_pos, buf_data);
             await_send_packet(&packet, &ack, buf);
             file_pos++;
         }
@@ -157,3 +151,8 @@ void send_packet(Packet *packet) {
         kill("Failed to login...\n");
     }
 }
+
+uint32_t get_id() {
+    return ++next_id;
+}
+

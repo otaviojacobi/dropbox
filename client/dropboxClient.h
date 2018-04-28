@@ -10,6 +10,7 @@ void delete_file(char *file);
 void close_session();
 void send_packet(Packet *packet);
 void await_send_packet(Packet *packet, Ack *ack, char* buf);
+uint32_t get_id();
 
 
 #endif
