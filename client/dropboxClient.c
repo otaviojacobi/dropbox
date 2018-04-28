@@ -100,9 +100,13 @@ int login_server(char *host, int port) {
 
 void send_file(char *file_name) {    
 
+    FILE *file = fopen(file_name, "rb");
+    if(!file) {
+        printf("Please insert a existing file (file_name.extension)\n");
+        return;
+    }
     Packet packet;
     Ack ack;
-    FILE *file = fopen(file_name, "rb");
     char buf[PACKET_SIZE];
     char buf_data[DATA_PACKET_SIZE];
     uint32_t file_size = get_file_size(file);
@@ -112,20 +116,18 @@ void send_file(char *file_name) {
     //file header packet
     create_packet(&packet, Header_type, get_id(), file_size, file_name);
     await_send_packet(&packet, &ack, buf);
-
+    
     //Send all file data in block_amount packets
-    if (file) {
-        while (file_pos <= block_amount) {
-            fread(buf_data, 1, DATA_PACKET_SIZE, file);
-            create_packet(&packet, Data_type, get_id(), file_pos, buf_data);
-            await_send_packet(&packet, &ack, buf);
-            file_pos++;
-        }
-        if (ferror(file)) {
-            kill("Error reading file\n");
-        }
-        fclose(file);
+    while (file_pos <= block_amount) {
+        fread(buf_data, 1, DATA_PACKET_SIZE, file);
+        create_packet(&packet, Data_type, get_id(), file_pos, buf_data);
+        await_send_packet(&packet, &ack, buf);
+        file_pos++;
     }
+    if (ferror(file)) {
+        kill("Error reading file\n");
+    }
+    fclose(file);
 }
 
 void await_send_packet(Packet *packet, Ack *ack, char *buf) {
@@ -135,7 +137,7 @@ void await_send_packet(Packet *packet, Ack *ack, char *buf) {
     do {
         send_packet(packet);
         recieve_status = recvfrom(socket_id, buf, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen);
-        if(recieve_status >= 0 && (uint8_t) buf[0] == Ack_type) {
+        if(recieve_status >= 0 && buf[0] == Ack_type) {
             memcpy(ack, buf, sizeof(Ack));
             isValidAck = match_ack_packet(ack, packet);
         }

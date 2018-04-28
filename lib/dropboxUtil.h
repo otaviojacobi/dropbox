@@ -81,6 +81,7 @@ int init_socket_client(int PORT, char *SERVER, struct sockaddr_in *si_other);
 int init_socket_server(int PORT, struct sockaddr_in *si_me);
 int command_to_action(char *command);
 void create_packet(Packet *packet, uint8_t type, uint32_t id, uint32_t info, char *data);
+void create_ack(Ack *ack, uint32_t id, uint32_t util);
 void clear_packet(Packet *packet);
 void string_tolower(char *p);
 void print_info(char *USER, char *version);

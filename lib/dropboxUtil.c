@@ -94,6 +94,12 @@ void create_packet(Packet *packet, uint8_t type, uint32_t id, uint32_t info, cha
     memcpy(packet->data, data,  DATA_PACKET_SIZE);
 }
 
+void create_ack(Ack *ack, uint32_t id, uint32_t util) {
+    ack->packet_type = Ack_type;
+    ack->packet_id = id;
+    ack->util = util;
+}
+
 void kill(char *message) {
     printf("%s", message);
     printf("Exiting...\n");

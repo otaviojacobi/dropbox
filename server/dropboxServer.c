@@ -81,29 +81,22 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
     
     Ack ack;
     Packet packet;
-    int packets_received = 0;
+    unsigned int packets_received = 0;
 
     if (file_opened) {
         do {
             receive_packet(buf);
             memcpy(&packet, buf, PACKET_SIZE);
-            ack.packet_type = Ack_type;
+            create_ack(&ack, packet.packet_id, packet.packet_info);
             if(packets_received != block_amount) {
-                if((uint8_t)buf[0] == Data_type) {
-                    fwrite(packet.data,1 , DATA_PACKET_SIZE, file_opened);
-
-                    ack.packet_id = packet.packet_id;
-                    ack.util = packet.packet_info;
+                if(buf[0] == Data_type) {
+                    fwrite(packet.data, 1, DATA_PACKET_SIZE, file_opened);
                     packets_received++;
-                } else if((uint8_t)buf[0] == Header_type) {
-                    ack.packet_id = id;
-                    ack.util = file_size;
+                } else if(buf[0] == Header_type) {
+                    create_ack(&ack, id, file_size);
                 } else kill("Unexpected packet type when receiving file");
             } else {
                 fwrite(packet.data, 1, file_size-((block_amount) * sizeof(buf_data)), file_opened);
-
-                ack.packet_id = packet.packet_id;
-                ack.util = packet.packet_info;
                 packets_received++;
             }
             send_ack(&ack);
