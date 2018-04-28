@@ -126,3 +126,7 @@ void set_socket_timeout(int socket_id) {
         kill("Error setting socket timeout\n");
     }
 }
+
+int match_ack_packet(Ack *ack, Packet *packet) {
+    return ((ack->packet_id == packet->packet_id) && (ack->util == packet->packet_info));
+}

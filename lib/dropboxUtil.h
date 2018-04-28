@@ -88,4 +88,5 @@ void kill(char *message);
 long get_file_size(FILE *file);
 void UM_BOM_PRINT(char *UMA_BOA_STRING);
 void set_socket_timeout(int socket_id);
+int match_ack_packet(Ack *ack, Packet *packet);
 #endif

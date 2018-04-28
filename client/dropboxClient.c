@@ -86,7 +86,7 @@ int login_server(char *host, int port) {
     char buffer[PACKAGE_SIZE];
     Packet login_packet;
     Ack ack;
-    int packet_id = get_id(); //TODO: fix id generation
+    int packet_id = get_id();
     
     create_packet(&login_packet, Client_login_type, packet_id, 0, host); //sdds construtor
     send_packet(&login_packet);
@@ -102,10 +102,6 @@ int login_server(char *host, int port) {
     }
     //Maybe should return the packet id ?
     return 0;
-}
-
-int matchingAckAndPacket(Ack ack, Packet packet) {
-    return ((ack.packet_id == packet.packet_id) && (ack.util == packet.packet_info));
 }
 
 void send_file(char *file_name) {    
@@ -127,9 +123,8 @@ void send_file(char *file_name) {
 
         if(recieve_status >= 0 && (uint8_t) buf[0] == Ack_type) {
             memcpy(&ack, buf, sizeof(Ack));
-            isValidAck = matchingAckAndPacket(ack, packet);
+            isValidAck = match_ack_packet(&ack,&packet);
         }
-
     } while(!isValidAck);
 
 
@@ -150,9 +145,9 @@ void send_file(char *file_name) {
                 recieve_status= recvfrom(socket_id, buf, sizeof(buf), 0, (struct sockaddr *) &si_other, &slen);
                 if(recieve_status >= 0 && (uint8_t) buf[0] == Ack_type) {
                     memcpy(&ack, buf, sizeof(Ack));
-                    isValidAck = matchingAckAndPacket(ack, packet);
+                    isValidAck = match_ack_packet(&ack,&packet);
                 }
-            } while(!isValidAck);
+            }while(!isValidAck);
             file_pos++;
         }
         if (ferror(file)) {
