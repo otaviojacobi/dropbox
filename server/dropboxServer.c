@@ -66,21 +66,16 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-//TODO: receive the real file.
 void receive_file(char *file, uint32_t file_size, uint32_t id) {
 
-    char *path_file = (char *) malloc(strlen(file) + strlen(clients[htons(si_other.sin_port)]) + 1);
-    path_file[0] = '\0';
-    strcat(path_file, clients[htons(si_other.sin_port)]);
-    strcat(path_file, "/");
-    strcat(path_file, file);
-    
+    char path_file[strlen(file) + strlen(clients[htons(si_other.sin_port)]) + 1];
+    get_full_path_file(path_file, file);
     FILE *file_opened = fopen(path_file, "w+");
     
     char buf[PACKAGE_SIZE];
-    char bufData[DATA_PACKAGE_SIZE];
+    char buf_data[DATA_PACKAGE_SIZE];
 
-    uint32_t block_amount = ceil(file_size/sizeof(bufData));
+    uint32_t block_amount = ceil(file_size/sizeof(buf_data));
     
     Ack ack;
     Packet packet;
@@ -109,7 +104,7 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
             //last block
             else {
                 memcpy(&packet, buf, PACKAGE_SIZE);
-                fwrite(packet.data, 1, file_size-((block_amount) * sizeof(bufData)), file_opened);
+                fwrite(packet.data, 1, file_size-((block_amount) * sizeof(buf_data)), file_opened);
 
                 ack.packet_id = packet.packet_id;
                 ack.util = packet.packet_info;
@@ -196,5 +191,11 @@ int receive_packet(char *buffer) {
         kill("Failed to receive ack...\n");
 
     return recv_len;
-    
+}
+
+void get_full_path_file(char *buffer, char *file) {
+    buffer[0] = '\0';
+    strcat(buffer, clients[htons(si_other.sin_port)]);
+    strcat(buffer, "/");
+    strcat(buffer, file);
 }

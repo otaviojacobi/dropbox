@@ -8,6 +8,7 @@ int check_login_status(char *host);
 void create_new_user(char *host);
 void bind_user_to_server(char *user_name);
 int receive_packet(char *buffer);
+void get_full_path_file(char *buffer, char *file);
 void send_ack(Ack *ack);
 
 #endif
