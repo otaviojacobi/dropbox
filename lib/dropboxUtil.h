@@ -1,18 +1,21 @@
 #ifndef _DROPBOXUTIL_H_
 #define _DROPBOXUTIL_H_
 
-
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <ctype.h>
 #include <stdint.h>
+#include <dirent.h>
+#include <errno.h>
+#include <math.h>
 #include <pthread.h>
-#include <sys/time.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
-
 
 #define PACKET_SIZE 1024
 #define PACKET_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
