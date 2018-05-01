@@ -1,6 +1,6 @@
 #include "dropboxServer.h"
 
-int socket_id;
+uint32_t current_port = 8132;
 struct sockaddr_in si_me, si_other;
 unsigned int slen;
 char *clients[100000]; // nao seria melhor uma lista encadeada?
@@ -14,8 +14,7 @@ int main(int argc, char **argv) {
     int PORT = argc >= 2 ? atoi(argv[1]) : DEFAULT_PORT; 
      
     //create a UDP socket
-    socket_id = init_socket_server(PORT, &si_me);
-    Ack ack;
+    int socket_id = init_socket_server(PORT, &si_me);
 
     //keep listening for data
     printf("Listening on port %d...\n", PORT);
@@ -31,15 +30,18 @@ int main(int argc, char **argv) {
         switch(packet.packet_type) {
             case Client_login_type:
                 bind_user_to_server(packet.data);
-                receive_login_server(packet.data, packet.packet_id);
+                receive_login_server(packet.data, packet.packet_id, socket_id);
                 break;
 
             case Header_type:
+                /*
                 ack.packet_type = Ack_type;
                 ack.packet_id = packet.packet_id;
                 ack.util = packet.packet_info;
                 send_ack(&ack);
                 receive_file(packet.data, packet.packet_info, packet.packet_id);
+                */
+                printf("Error: not supposed to be Header_type case\n");
                 break;
             
             case Data_type:
@@ -48,14 +50,13 @@ int main(int argc, char **argv) {
 
             default: printf("The packet type is not supported!\n");
         }
-
     }
  
     close(socket_id);
     return 0;
 }
 
-void receive_file(char *file, uint32_t file_size, uint32_t id) {
+void receive_file(char *file, uint32_t file_size, uint32_t packet_id, int socket_id) {
 
     char path_file[strlen(file) + strlen(clients[htons(si_other.sin_port)]) + 1];
     get_full_path_file(path_file, file);
@@ -72,7 +73,7 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
 
     if (file_opened) {
         do {
-            receive_packet(buf);
+            receive_packet(buf, socket_id);
             memcpy(&packet, buf, PACKET_SIZE);
             create_ack(&ack, packet.packet_id, packet.packet_info);
             if(packets_received != block_amount) {
@@ -80,13 +81,13 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
                     fwrite(packet.data, 1, DATA_PACKET_SIZE, file_opened);
                     packets_received++;
                 } else if(buf[0] == Header_type) {
-                    create_ack(&ack, id, file_size);
+                    create_ack(&ack, packet_id, file_size);
                 } else kill("Unexpected packet type when receiving file");
             } else {
                 fwrite(packet.data, 1, file_size-((block_amount) * sizeof(buf_data)), file_opened);
                 packets_received++;
             }
-            send_ack(&ack);
+            send_ack(&ack, socket_id);
         } while(packets_received <= block_amount);
 
         fclose(file_opened);
@@ -97,7 +98,7 @@ void receive_file(char *file, uint32_t file_size, uint32_t id) {
     }
 }
 
-void send_ack(Ack *ack) {
+void send_ack(Ack *ack, int socket_id) {
     
     if (sendto(socket_id, ack, sizeof(Ack) , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
@@ -105,9 +106,11 @@ void send_ack(Ack *ack) {
     }
 }
 
-void receive_login_server(char *host, int packet_id) {
+void receive_login_server(char *host, int packet_id, int socket_id) {
 
+    pthread_t logged_client;
     int status = check_login_status(host);
+    int new_socket_id;
     Ack ack;
     ack.packet_type = Ack_type;
     ack.packet_id = packet_id;
@@ -126,9 +129,54 @@ void receive_login_server(char *host, int packet_id) {
         default: printf("Failed to login.\n");
     }
 
+    uint32_t port = create_user_socket(&new_socket_id);
+    //TODO: proper hash table for users
+    pthread_create(&logged_client, NULL, handle_user, (void*)new_socket_id);
+    ack.info = port;
+
     if (sendto(socket_id, &ack, sizeof(Ack) , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
         kill("Failed to send ack...\n");
+    }
+}
+
+void* handle_user(void* args) {
+    int *point_id = (int*) args;
+    int socket_id = *point_id;
+    int recv_len;
+    Packet packet;
+    Ack ack;
+    struct sockaddr_in si_client;
+
+    while(true) {
+
+        //try to receive some data, this is a blocking call
+        if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_client, &slen)) == -1)
+            kill("Failed to receive data...\n");
+
+        //print details of the client/peer and the data received
+        printf("Received packet from %s:%d\n", inet_ntoa(si_client.sin_addr), ntohs(si_client.sin_port));
+        
+        switch(packet.packet_type) {
+            case Client_login_type:
+                printf("Error: You have logged in already !\n");
+                break;
+
+            case Header_type:
+                ack.packet_type = Ack_type;
+                ack.packet_id = packet.packet_id;
+                ack.util = packet.packet_info;
+                send_ack(&ack, socket_id);
+                receive_file(packet.data, packet.packet_info, packet.packet_id, socket_id);
+                printf("Error: not supposed to be Header_type case\n");
+                break;
+            
+            case Data_type:
+                printf("Error: not supposed to be Data_type case\n");
+                break;
+
+            default: printf("The packet type is not supported!\n");
+        }
     }
 }
 
@@ -159,7 +207,7 @@ void bind_user_to_server(char *user_name) {
     printf("Binded %d to %s\n", ntohs(si_other.sin_port), user_name);
 }
 
-int receive_packet(char *buffer) {
+int receive_packet(char *buffer, int socket_id) {
     int recv_len;
 
     //try to receive the ack, this is a blocking call
@@ -174,4 +222,27 @@ void get_full_path_file(char *buffer, char *file) {
     strcat(buffer, clients[htons(si_other.sin_port)]);
     strcat(buffer, "/");
     strcat(buffer, file);
+}
+
+uint32_t create_user_socket(int *id) {
+
+    int new_socket_id;
+    struct sockaddr_in s_in;
+
+    if ( (new_socket_id=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+       kill("An error ocurred while creating the socket.\n");
+
+    *id = new_socket_id;
+
+    memset((char *) &s_in, 0, sizeof(s_in));
+     
+    //TODO: is the order important ?
+    s_in.sin_family = AF_INET;
+    s_in.sin_addr.s_addr = htonl(INADDR_ANY);
+    do {
+        current_port++;
+        s_in.sin_port = htons(current_port);
+    } while (bind(new_socket_id, (struct sockaddr *)&s_in, sizeof(struct sockaddr_in)) == -1);
+
+    return current_port;
 }

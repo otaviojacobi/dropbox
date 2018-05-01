@@ -81,6 +81,7 @@ typedef struct ack {
     uint8_t packet_type;
     uint32_t util;
     uint32_t packet_id;
+    uint32_t info;
 } Ack;
 
 int init_socket_client(int PORT, char *SERVER, struct sockaddr_in *si_other);
