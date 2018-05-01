@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _DROPBOXUTIL_H_
 #define _DROPBOXUTIL_H_
 
@@ -26,11 +27,11 @@
 #define ACK_TIME_OUT 200000
 
 #define COMMAND_LENGTH 64
-#define SERVER_DEFAULT "127.0.0.1"
 #define DEFAULT_PORT 8888
 #define true 1
 #define false 0
 
+static char *SERVER_DEFAULT = "127.0.0.1";
 struct	file_info	{
     char name[MAXNAME];
     char extension[MAXNAME];
@@ -53,7 +54,7 @@ enum possible_actions {
     List_client,
     Get_sync_dir,
     Exit
-} ACTION;
+};
 
 //packet types
 enum packet_types {
@@ -61,12 +62,12 @@ enum packet_types {
     Data_type,
     Header_type,
     Ack_type
-} PACKET_TYPE;
+};
 
 enum login_types {
     Old_user,
     New_user
-} LOGIN_TYPE;
+};
 
 typedef struct packet {
     uint8_t packet_type;

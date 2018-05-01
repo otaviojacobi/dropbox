@@ -1,3 +1,4 @@
+#pragma once
 #ifndef _DROPBOXSERVER_H_
 #define _DROPBOXSERVER_H_
 

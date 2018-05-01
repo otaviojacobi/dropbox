@@ -2,3 +2,4 @@
 client/client
 server/server
 lib/util.o
+server/server_logs.txt

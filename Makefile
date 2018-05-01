@@ -1,16 +1,16 @@
-CC=gcc
-FLAGS=-Wall -lm -lpthread
+CC=g++
+FLAGS=-lm -lpthread -fpermissive -Wno-write-strings
 
 all: util server client
 
 util:
-	$(CC) -o lib/util.o -c lib/dropboxUtil.c $(FLAGS) 
+	$(CC) -o lib/util.o -c lib/dropboxUtil.cpp $(FLAGS) 
 
 server: util
-	$(CC) server/dropboxServer.c lib/util.o -o server/server $(FLAGS) 
+	$(CC) server/dropboxServer.cpp lib/util.o -o server/server $(FLAGS) 
 
 client: util
-	gcc client/dropboxClient.c lib/util.o -o client/client $(FLAGS) 
+	$(CC) client/dropboxClient.cpp lib/util.o -o client/client $(FLAGS) 
 
 clean:
 	rm lib/*.o
@@ -20,13 +20,13 @@ clean:
 silent: util_silent server_silent client_silent
 
 util_silent:
-	@$(CC) -o lib/util.o -c lib/dropboxUtil.c $(FLAGS) 
+	@$(CC) -o lib/util.o -c lib/dropboxUtil.cpp $(FLAGS) 
 
 server_silent: util_silent
-	@$(CC) server/dropboxServer.c lib/util.o -o server/server $(FLAGS) 
+	@$(CC) server/dropboxServer.cpp lib/util.o -o server/server $(FLAGS) 
 
 client_silent: util_silent
-	@gcc client/dropboxClient.c lib/util.o -o client/client $(FLAGS) 
+	@$(CC) client/dropboxClient.cpp lib/util.o -o client/client $(FLAGS) 
 
 clean_silent:
 	@rm lib/*.o

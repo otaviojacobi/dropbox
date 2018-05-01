@@ -1,7 +1,0 @@
-Listening on port 8080...
-Received packet from 127.0.0.1:43905
-43905
-Binded 43905 to test_user
-Creating new user for test_user
-Received packet from 127.0.0.1:43905
-Received packet from 127.0.0.1:43905
