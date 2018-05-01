@@ -3,7 +3,8 @@
 uint32_t current_port = 8132;
 struct sockaddr_in si_me, si_other;
 unsigned int slen;
-char *clients[100000]; // nao seria melhor uma lista encadeada?
+//char *clients[100000]; // nao seria melhor uma lista encadeada?
+std::map<int, Client> clients;
 
 int main(int argc, char **argv) {
     
@@ -29,19 +30,18 @@ int main(int argc, char **argv) {
         
         switch(packet.packet_type) {
             case Client_login_type:
-                bind_user_to_server(packet.data);
                 receive_login_server(packet.data, packet.packet_id, socket_id);
                 break;
 
             case Header_type:
-                printf("Error: not supposed to be Header_type case\n");
+                printf("Error: not supposed to be Header_type case on main\n");
                 break;
             
             case Data_type:
-                printf("Error: not supposed to be Data_type case\n");
+                printf("Error: not supposed to be Data_type case on main\n");
                 break;
 
-            default: printf("The packet type is not supported!\n");
+            default: printf("The packet type is not supported! on main\n");
         }
     }
  
@@ -51,8 +51,8 @@ int main(int argc, char **argv) {
 
 void receive_file(char *file, uint32_t file_size, uint32_t packet_id, int socket_id) {
 
-    char path_file[strlen(file) + strlen(clients[htons(si_other.sin_port)]) + 1];
-    get_full_path_file(path_file, file);
+    char path_file[strlen(file) + strlen(clients[socket_id].user_name) + 1];
+    get_full_path_file(path_file, file, socket_id);
     FILE *file_opened = fopen(path_file, "w+");
     
     char buf[PACKET_SIZE];
@@ -123,15 +123,11 @@ void receive_login_server(char *host, int packet_id, int socket_id) {
     }
 
     uint32_t port = create_user_socket(&new_socket_id);
-    //TODO: proper hash table for users
+    bind_user_to_server( host, new_socket_id, port);
     pthread_create(&logged_client, NULL, handle_user, (void*) &new_socket_id);
     ack.info = port;
 
-    if (sendto(socket_id, &ack, sizeof(Ack) , 0 , (struct sockaddr *) &si_other, slen) == -1) {
-        close(socket_id);        
-        kill("Failed to send ack...\n");
-    }
-
+    send_ack(&ack, socket_id);
     printf("User %s Logged in.\n", host);
 }
 
@@ -196,11 +192,14 @@ void create_new_user(char *host) {
     mkdir(host, 0700);
 }
 
-void bind_user_to_server(char *user_name) {
+void bind_user_to_server(char *user_name, int socket_id, uint32_t port) {
 
-    printf("%d\n", ntohs(si_other.sin_port));
-    clients[ntohs(si_other.sin_port)] =  strdup(user_name);
-    printf("Binded %d to %s\n", ntohs(si_other.sin_port), user_name);
+    Client client;
+
+    client.devices[0] = port;
+    strcpy(client.user_name, user_name);
+    clients.insert(std::pair<int, Client>(socket_id, client));
+    printf("Binded %d to %s\n", socket_id, clients[socket_id].user_name);
 }
 
 int receive_packet(char *buffer, int socket_id) {
@@ -213,9 +212,9 @@ int receive_packet(char *buffer, int socket_id) {
     return recv_len;
 }
 
-void get_full_path_file(char *buffer, char *file) {
+void get_full_path_file(char *buffer, char *file, int socket_id) {
     buffer[0] = '\0';
-    strcat(buffer, clients[htons(si_other.sin_port)]);
+    strcat(buffer, clients[socket_id].user_name);
     strcat(buffer, "/");
     strcat(buffer, file);
 }

@@ -18,6 +18,8 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 
+#include <map>
+
 #define PACKET_SIZE 1024
 #define PACKET_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
 #define DATA_PACKET_SIZE 1024-12 //PACKET_SIZE-PACKET_HEADER_SIZE
@@ -41,8 +43,7 @@ struct	file_info	{
 
 typedef struct	client	{
     int devices[2];
-    char userid[MAXNAME];
-    struct	file_info f_info[MAXFILES];
+    char user_name[MAXNAME];
     int logged_in;
 } Client;
 
