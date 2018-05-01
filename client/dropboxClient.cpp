@@ -84,6 +84,8 @@ int login_server(char *host, int port) {
     else {
        kill("We failed to log you in. Try again later!\n");
     }
+
+    socket_id = init_socket_client(ack.info, SERVER_DEFAULT, &si_other);
     //Maybe should return the packet id ?
     return 0;
 }
@@ -137,10 +139,12 @@ void await_send_packet(Packet *packet, Ack *ack, char *buf) {
 void send_packet(Packet *packet) {
     char buf[PACKET_SIZE];
     memcpy(buf, packet, PACKET_SIZE);
+
+    printf("Sending to %d\n", socket_id);
     
     if (sendto(socket_id, buf, PACKET_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
-        kill("Failed to login...\n");
+        kill("Failed to send packet...\n");
     }
 }
 

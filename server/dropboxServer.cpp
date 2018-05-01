@@ -34,13 +34,6 @@ int main(int argc, char **argv) {
                 break;
 
             case Header_type:
-                /*
-                ack.packet_type = Ack_type;
-                ack.packet_id = packet.packet_id;
-                ack.util = packet.packet_info;
-                send_ack(&ack);
-                receive_file(packet.data, packet.packet_info, packet.packet_id);
-                */
                 printf("Error: not supposed to be Header_type case\n");
                 break;
             
@@ -131,17 +124,19 @@ void receive_login_server(char *host, int packet_id, int socket_id) {
 
     uint32_t port = create_user_socket(&new_socket_id);
     //TODO: proper hash table for users
-    pthread_create(&logged_client, NULL, handle_user, (void*)new_socket_id);
+    pthread_create(&logged_client, NULL, handle_user, (void*) &new_socket_id);
     ack.info = port;
 
     if (sendto(socket_id, &ack, sizeof(Ack) , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
         kill("Failed to send ack...\n");
     }
+
+    printf("User %s Logged in.\n", host);
 }
 
 void* handle_user(void* args) {
-    int *point_id = (int*) args;
+    int *point_id = (int *) args;
     int socket_id = *point_id;
     int recv_len;
     Packet packet;
@@ -149,6 +144,8 @@ void* handle_user(void* args) {
     struct sockaddr_in si_client;
 
     while(true) {
+
+        printf("THREAD RODANDO ANTES %d\n", socket_id);
 
         //try to receive some data, this is a blocking call
         if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_client, &slen)) == -1)
@@ -168,7 +165,6 @@ void* handle_user(void* args) {
                 ack.util = packet.packet_info;
                 send_ack(&ack, socket_id);
                 receive_file(packet.data, packet.packet_info, packet.packet_id, socket_id);
-                printf("Error: not supposed to be Header_type case\n");
                 break;
             
             case Data_type:
@@ -239,10 +235,12 @@ uint32_t create_user_socket(int *id) {
     //TODO: is the order important ?
     s_in.sin_family = AF_INET;
     s_in.sin_addr.s_addr = htonl(INADDR_ANY);
+
     do {
         current_port++;
         s_in.sin_port = htons(current_port);
     } while (bind(new_socket_id, (struct sockaddr *)&s_in, sizeof(struct sockaddr_in)) == -1);
+
 
     return current_port;
 }
