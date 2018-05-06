@@ -1,6 +1,6 @@
+#pragma once
 #ifndef _DROPBOXUTIL_H_
 #define _DROPBOXUTIL_H_
-
 
 #include <stdio.h>
 #include <string.h>
@@ -8,9 +8,17 @@
 #include <unistd.h>
 #include <ctype.h>
 #include <stdint.h>
-#include <sys/time.h>
+#include <dirent.h>
+#include <errno.h>
+#include <math.h>
+#include <pthread.h>
 #include <arpa/inet.h>
+#include <sys/time.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
+
+#include <map>
 
 #define PACKET_SIZE 1024
 #define PACKET_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
@@ -21,11 +29,11 @@
 #define ACK_TIME_OUT 200000
 
 #define COMMAND_LENGTH 64
-#define SERVER_DEFAULT "127.0.0.1"
 #define DEFAULT_PORT 8888
 #define true 1
 #define false 0
 
+static char *SERVER_DEFAULT = "127.0.0.1";
 struct	file_info	{
     char name[MAXNAME];
     char extension[MAXNAME];
@@ -35,8 +43,7 @@ struct	file_info	{
 
 typedef struct	client	{
     int devices[2];
-    char userid[MAXNAME];
-    struct	file_info f_info[MAXFILES];
+    char user_name[MAXNAME];
     int logged_in;
 } Client;
 
@@ -48,7 +55,7 @@ enum possible_actions {
     List_client,
     Get_sync_dir,
     Exit
-} ACTION;
+};
 
 //packet types
 enum packet_types {
@@ -56,12 +63,12 @@ enum packet_types {
     Data_type,
     Header_type,
     Ack_type
-} PACKET_TYPE;
+};
 
 enum login_types {
     Old_user,
     New_user
-} LOGIN_TYPE;
+};
 
 typedef struct packet {
     uint8_t packet_type;
@@ -75,6 +82,7 @@ typedef struct ack {
     uint8_t packet_type;
     uint32_t util;
     uint32_t packet_id;
+    uint32_t info;
 } Ack;
 
 int init_socket_client(int PORT, char *SERVER, struct sockaddr_in *si_other);

@@ -1,13 +1,3 @@
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <stdint.h>
-#include <math.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <sys/time.h>
-#include "../lib/dropboxUtil.h"
 #include "dropboxClient.h"
 
 struct sockaddr_in si_other;
@@ -94,6 +84,8 @@ int login_server(char *host, int port) {
     else {
        kill("We failed to log you in. Try again later!\n");
     }
+
+    socket_id = init_socket_client(ack.info, SERVER_DEFAULT, &si_other);
     //Maybe should return the packet id ?
     return 0;
 }
@@ -132,29 +124,28 @@ void send_file(char *file_name) {
 
 void await_send_packet(Packet *packet, Ack *ack, char *buf) {
     int recieve_status;
-    int isValidAck = false;
+    int is_valid_ack = false;
     
     do {
         send_packet(packet);
         recieve_status = recvfrom(socket_id, buf, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen);
         if(recieve_status >= 0 && buf[0] == Ack_type) {
             memcpy(ack, buf, sizeof(Ack));
-            isValidAck = match_ack_packet(ack, packet);
+            is_valid_ack = match_ack_packet(ack, packet);
         }
-    } while(!isValidAck);
+    } while(!is_valid_ack);
 }
 
 void send_packet(Packet *packet) {
     char buf[PACKET_SIZE];
     memcpy(buf, packet, PACKET_SIZE);
-    
+
     if (sendto(socket_id, buf, PACKET_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
-        kill("Failed to login...\n");
+        kill("Failed to send packet...\n");
     }
 }
 
 uint32_t get_id() {
     return ++next_id;
 }
-

@@ -1,6 +1,8 @@
+#pragma once
 #ifndef _DROPBOXCLIENT_H_
 #define _DROPBOXCLIENT_H_
 
+#include "../lib/dropboxUtil.h"
 
 int login_server(char *host, int port);
 void sync_client();
