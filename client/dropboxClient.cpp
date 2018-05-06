@@ -140,8 +140,6 @@ void send_packet(Packet *packet) {
     char buf[PACKET_SIZE];
     memcpy(buf, packet, PACKET_SIZE);
 
-    printf("Sending to %d\n", socket_id);
-    
     if (sendto(socket_id, buf, PACKET_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
         close(socket_id);        
         kill("Failed to send packet...\n");
