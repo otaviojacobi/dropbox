@@ -127,3 +127,122 @@ int match_ack_packet(Ack *ack, Packet *packet) {
            (ack->packet_id == packet->packet_id) :
            ((ack->packet_id == packet->packet_id) && (ack->util == packet->packet_info));
 }
+
+void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int socket_id) {
+
+
+    FILE *file_opened = fopen(path_file, "w+");
+    
+    char buf[PACKET_SIZE];
+    char buf_data[DATA_PACKET_SIZE];
+
+    uint32_t block_amount = ceil(file_size/sizeof(buf_data));
+    
+    Ack ack;
+    Packet packet;
+    unsigned int packets_received = 0;
+
+    struct sockaddr_in si_other;
+    unsigned int slen = sizeof(si_other);
+
+    if (file_opened) {
+        do {
+            receive_packet(buf, socket_id, &si_other, &slen);
+            memcpy(&packet, buf, PACKET_SIZE);
+            create_ack(&ack, packet.packet_id, packet.packet_info);
+            if(packets_received != block_amount) {
+                if(buf[0] == Data_type) {
+                    fwrite(packet.data, 1, DATA_PACKET_SIZE, file_opened);
+                    packets_received++;
+                } else if(buf[0] == Header_type) {
+                    create_ack(&ack, packet_id, file_size);
+                } else kill("Unexpected packet type when receiving file");
+            } else {
+                fwrite(packet.data, 1, file_size-((block_amount) * sizeof(buf_data)), file_opened);
+                packets_received++;
+            }
+            send_ack(&ack, socket_id, &si_other, slen);
+        } while(packets_received <= block_amount);
+
+        fclose(file_opened);
+
+        if (ferror(file_opened)) {
+            kill("Error writing file\n");
+        }
+    }
+}
+
+void send_ack(Ack *ack, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
+
+
+    if (sendto(socket_id, ack, sizeof(Ack) , 0 , (struct sockaddr *) si_other, slen) == -1) {
+        close(socket_id);        
+        kill("Failed to send ack...\n");
+    }
+}
+
+int receive_packet(char *buffer, int socket_id, struct sockaddr_in *si_other, unsigned int *slen) {
+    int recv_len;
+
+    //try to receive the ack, this is a blocking call
+    if ((recv_len = recvfrom(socket_id, buffer, PACKET_SIZE, 0, (struct sockaddr *) si_other, slen)) == -1)
+        kill("Failed to receive ack...\n");
+
+    return recv_len;
+}
+
+void send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id) {    
+
+    FILE *file = fopen(file_name, "rb");
+    if(!file) {
+        printf("Please insert a existing file (file_name.extension)\n");
+        return;
+    }
+    Packet packet;
+    Ack ack;
+    char buf[PACKET_SIZE];
+    char buf_data[DATA_PACKET_SIZE];
+    uint32_t file_size = get_file_size(file);
+    uint32_t file_pos = 0;
+    uint32_t block_amount = ceil(file_size/sizeof(buf_data));
+
+    //file header packet
+    create_packet(&packet, Header_type, packet_id, file_size, file_name);
+    await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
+    
+    //Send all file data in block_amount packets
+    while (file_pos <= block_amount) {
+        fread(buf_data, 1, DATA_PACKET_SIZE, file);
+        create_packet(&packet, Data_type, packet_id+1, file_pos, buf_data);
+        await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
+        file_pos++;
+    }
+    if (ferror(file)) {
+        kill("Error reading file\n");
+    }
+    fclose(file);
+}
+
+void await_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
+    int recieve_status;
+    int is_valid_ack = false;
+    
+    do {
+        send_packet(packet, socket_id, si_other, slen);
+        recieve_status = recvfrom(socket_id, buf, PACKET_SIZE, 0, (struct sockaddr *) si_other, &slen);
+        if(recieve_status >= 0 && buf[0] == Ack_type) {
+            memcpy(ack, buf, sizeof(Ack));
+            is_valid_ack = match_ack_packet(ack, packet);
+        }
+    } while(!is_valid_ack);
+}
+
+void send_packet(Packet *packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
+    char buf[PACKET_SIZE];
+    memcpy(buf, packet, PACKET_SIZE);
+
+    if (sendto(socket_id, buf, PACKET_SIZE , 0 , (struct sockaddr *) si_other, slen) == -1) {
+        close(socket_id);        
+        kill("Failed to send packet...\n");
+    }
+}

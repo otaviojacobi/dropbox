@@ -50,60 +50,6 @@ int main(int argc, char **argv) {
     return 0;
 }
 
-void receive_file(char *file, uint32_t file_size, uint32_t packet_id, int socket_id) {
-
-    char path_file[strlen(file) + strlen(clients[socket_id].user_name) + 1];
-    get_full_path_file(path_file, file, socket_id);
-    FILE *file_opened = fopen(path_file, "w+");
-    
-    char buf[PACKET_SIZE];
-    char buf_data[DATA_PACKET_SIZE];
-
-    uint32_t block_amount = ceil(file_size/sizeof(buf_data));
-    
-    Ack ack;
-    Packet packet;
-    unsigned int packets_received = 0;
-
-    struct sockaddr_in si_other;
-    unsigned int slen = sizeof(si_other);
-
-    if (file_opened) {
-        do {
-            receive_packet(buf, socket_id, &si_other, &slen);
-            memcpy(&packet, buf, PACKET_SIZE);
-            create_ack(&ack, packet.packet_id, packet.packet_info);
-            if(packets_received != block_amount) {
-                if(buf[0] == Data_type) {
-                    fwrite(packet.data, 1, DATA_PACKET_SIZE, file_opened);
-                    packets_received++;
-                } else if(buf[0] == Header_type) {
-                    create_ack(&ack, packet_id, file_size);
-                } else kill("Unexpected packet type when receiving file");
-            } else {
-                fwrite(packet.data, 1, file_size-((block_amount) * sizeof(buf_data)), file_opened);
-                packets_received++;
-            }
-            send_ack(&ack, socket_id, &si_other, slen);
-        } while(packets_received <= block_amount);
-
-        fclose(file_opened);
-
-        if (ferror(file_opened)) {
-            kill("Error writing file\n");
-        }
-    }
-}
-
-void send_ack(Ack *ack, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
-
-
-    if (sendto(socket_id, ack, sizeof(Ack) , 0 , (struct sockaddr *) si_other, slen) == -1) {
-        close(socket_id);        
-        kill("Failed to send ack...\n");
-    }
-}
-
 void receive_login_server(char *host, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen ) {
 
     pthread_t logged_client;
@@ -144,6 +90,7 @@ void* handle_user(void* args) {
     Ack ack;
     struct sockaddr_in si_client;
     unsigned int slen = sizeof(si_client);
+    char *path_file;
 
     while(true) {
 
@@ -166,7 +113,10 @@ void* handle_user(void* args) {
                 ack.packet_id = packet.packet_id;
                 ack.util = packet.packet_info;
                 send_ack(&ack, socket_id, &si_client, slen);
-                receive_file(packet.data, packet.packet_info, packet.packet_id, socket_id);
+                path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
+                get_full_path_file(path_file, packet.data, socket_id);
+                receive_file(path_file, packet.packet_info, packet.packet_id, socket_id);
+                free(path_file);
                 break;
             
             case Data_type:
@@ -206,16 +156,6 @@ void bind_user_to_server(char *user_name, int socket_id, uint32_t port ) {
     strcpy(client.user_name, user_name);
     clients.insert(std::pair<int, Client>(socket_id, client));
     printf("Binded %d to %s\n", socket_id, clients[socket_id].user_name);
-}
-
-int receive_packet(char *buffer, int socket_id, struct sockaddr_in *si_other, unsigned int *slen) {
-    int recv_len;
-
-    //try to receive the ack, this is a blocking call
-    if ((recv_len = recvfrom(socket_id, buffer, PACKET_SIZE, 0, (struct sockaddr *) si_other, slen)) == -1)
-        kill("Failed to receive ack...\n");
-
-    return recv_len;
 }
 
 void get_full_path_file(char *buffer, char *file, int socket_id) {

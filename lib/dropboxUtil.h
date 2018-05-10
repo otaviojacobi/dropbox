@@ -60,6 +60,7 @@ enum possible_actions {
 //packet types
 enum packet_types {
     Client_login_type,
+    Download_type,
     Data_type,
     Header_type,
     Ack_type
@@ -97,5 +98,12 @@ void kill(char *message);
 long get_file_size(FILE *file);
 void set_socket_timeout(int socket_id);
 int match_ack_packet(Ack *ack, Packet *packet);
+void send_ack(Ack *ack, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
+int receive_packet(char *buffer, int socket_id, struct sockaddr_in *si_other, unsigned int *slen);
+void receive_file(char *file, uint32_t file_size, uint32_t packet_id, int socket_id);
+void send_packet(Packet *packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
+void await_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
+void send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id);    
+
 
 #endif

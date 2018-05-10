@@ -1,5 +1,5 @@
 CC=g++
-FLAGS=-lm -lpthread -fpermissive -Wno-write-strings
+FLAGS=-lm -lpthread -Wno-write-strings
 
 all: util server client
 

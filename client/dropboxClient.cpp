@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 
             case Upload:
                 scanf("%s", command_parameter); // files names are not allowed to have spaces. TODO: fix this
-                send_file(command_parameter);
+                send_file(command_parameter, socket_id, &si_other, slen, get_id());
                 break;
 
             case Download:
@@ -69,12 +69,14 @@ int main(int argc, char **argv) {
 
 int login_server(char *host, int port) {
 
+    get_id();
+
     char buf[PACKET_SIZE];
     Packet login_packet;
     Ack ack;
     
     create_packet(&login_packet, Client_login_type, get_id(), 0, host); //sdds construtor
-    await_send_packet(&login_packet, &ack, buf);
+    await_send_packet(&login_packet, &ack, buf, socket_id, &si_other, slen);
 
     if((uint8_t)buf[0] == Ack_type) {
         memcpy(&ack, buf, sizeof(ack));
@@ -88,62 +90,6 @@ int login_server(char *host, int port) {
     socket_id = init_socket_client(ack.info, SERVER_DEFAULT, &si_other);
     //Maybe should return the packet id ?
     return 0;
-}
-
-void send_file(char *file_name) {    
-
-    FILE *file = fopen(file_name, "rb");
-    if(!file) {
-        printf("Please insert a existing file (file_name.extension)\n");
-        return;
-    }
-    Packet packet;
-    Ack ack;
-    char buf[PACKET_SIZE];
-    char buf_data[DATA_PACKET_SIZE];
-    uint32_t file_size = get_file_size(file);
-    uint32_t file_pos = 0;
-    uint32_t block_amount = ceil(file_size/sizeof(buf_data));
-
-    //file header packet
-    create_packet(&packet, Header_type, get_id(), file_size, file_name);
-    await_send_packet(&packet, &ack, buf);
-    
-    //Send all file data in block_amount packets
-    while (file_pos <= block_amount) {
-        fread(buf_data, 1, DATA_PACKET_SIZE, file);
-        create_packet(&packet, Data_type, get_id(), file_pos, buf_data);
-        await_send_packet(&packet, &ack, buf);
-        file_pos++;
-    }
-    if (ferror(file)) {
-        kill("Error reading file\n");
-    }
-    fclose(file);
-}
-
-void await_send_packet(Packet *packet, Ack *ack, char *buf) {
-    int recieve_status;
-    int is_valid_ack = false;
-    
-    do {
-        send_packet(packet);
-        recieve_status = recvfrom(socket_id, buf, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen);
-        if(recieve_status >= 0 && buf[0] == Ack_type) {
-            memcpy(ack, buf, sizeof(Ack));
-            is_valid_ack = match_ack_packet(ack, packet);
-        }
-    } while(!is_valid_ack);
-}
-
-void send_packet(Packet *packet) {
-    char buf[PACKET_SIZE];
-    memcpy(buf, packet, PACKET_SIZE);
-
-    if (sendto(socket_id, buf, PACKET_SIZE , 0 , (struct sockaddr *) &si_other, slen) == -1) {
-        close(socket_id);        
-        kill("Failed to send packet...\n");
-    }
 }
 
 uint32_t get_id() {

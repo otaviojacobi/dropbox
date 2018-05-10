@@ -1,0 +1,1 @@
+stdbuf: failed to run command './server': Permission denied
