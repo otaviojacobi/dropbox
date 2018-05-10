@@ -91,6 +91,8 @@ void* handle_user(void* args) {
     struct sockaddr_in si_client;
     unsigned int slen = sizeof(si_client);
     char *path_file;
+    FILE *file;
+    uint32_t packet_id = 0;
 
     while(true) {
 
@@ -109,9 +111,7 @@ void* handle_user(void* args) {
                 break;
 
             case Header_type:
-                ack.packet_type = Ack_type;
-                ack.packet_id = packet.packet_id;
-                ack.util = packet.packet_info;
+                create_ack(&ack, packet.packet_id, packet.packet_info);
                 send_ack(&ack, socket_id, &si_client, slen);
                 path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
                 get_full_path_file(path_file, packet.data, socket_id);
@@ -120,11 +120,17 @@ void* handle_user(void* args) {
                 break;
 
             case Download_type:
-                
-
+                path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
+                get_full_path_file(path_file, packet.data, socket_id);
+                file = fopen(path_file, "rb");
+                create_ack(&ack, packet.packet_id, get_file_size(file));
+                send_ack(&ack, socket_id, &si_client, slen);
+                packet_id = send_file(path_file, socket_id, &si_client, slen, packet_id);
+                fclose(file);
+                free(path_file);
 
             case Data_type:
-                printf("Error: not supposed to be Data_type case\n");
+                printf("Error: not supposed to be Data_type case THREAD\n");
                 break;
 
             default: printf("The packet type is not supported!\n");

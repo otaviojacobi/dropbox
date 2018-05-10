@@ -123,7 +123,7 @@ void set_socket_timeout(int socket_id) {
 }
 
 int match_ack_packet(Ack *ack, Packet *packet) {
-    return packet->packet_type == Client_login_type ?
+    return packet->packet_type == Client_login_type || packet->packet_type == Download_type ?
            (ack->packet_id == packet->packet_id) :
            ((ack->packet_id == packet->packet_id) && (ack->util == packet->packet_info));
 }
@@ -196,7 +196,7 @@ int send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsi
     FILE *file = fopen(file_name, "rb");
     if(!file) {
         printf("Please insert a existing file (file_name.extension)\n");
-        return;
+        return socket_id;
     }
     Packet packet;
     Ack ack;

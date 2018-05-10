@@ -38,9 +38,8 @@ int main(int argc, char **argv) {
                 break;
 
             case Download:
-                printf("Not yet implemented\n");                            
-                //scanf("%s", command_parameter);
-                //receive_client(command_parameter);
+                scanf("%s", command_parameter);
+                receive_client(command_parameter);
                 break;
 
             case List_server:            
@@ -71,8 +70,19 @@ int main(int argc, char **argv) {
 
 
 void receive_client(char *file_name) {
+    char buf[PACKET_SIZE];
+    Packet packet;
+    Ack ack;
     
-} 
+    create_packet(&packet, Download_type, get_id(), 0, file_name); //sdds construtor
+    await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+
+    if((uint8_t)buf[0] == Ack_type) {
+        memcpy(&ack, buf, sizeof(ack));
+        printf("%d\n", ack.util);
+    }
+    receive_file(file_name, ack.util, 0, socket_id);
+}
 
 int login_server(char *host, int port) {
 
