@@ -118,7 +118,11 @@ void* handle_user(void* args) {
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id);
                 free(path_file);
                 break;
-            
+
+            case Download_type:
+                
+
+
             case Data_type:
                 printf("Error: not supposed to be Data_type case\n");
                 break;
