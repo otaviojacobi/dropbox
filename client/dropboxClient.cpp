@@ -34,7 +34,7 @@ int main(int argc, char **argv) {
 
             case Upload:
                 scanf("%s", command_parameter); // files names are not allowed to have spaces. TODO: fix this
-                next_id = send_file(command_parameter, socket_id, &si_other, slen, get_id());
+                next_id = send_file(command_parameter, socket_id, &si_other, slen, get_id(), 's');
                 break;
 
             case Download:
@@ -81,6 +81,7 @@ void receive_client(char *file_name) {
         memcpy(&ack, buf, sizeof(ack));
         printf("%d\n", ack.util);
     }
+
     receive_file(file_name, ack.util, 0, socket_id);
 }
 

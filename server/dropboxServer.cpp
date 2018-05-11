@@ -124,9 +124,10 @@ void* handle_user(void* args) {
                 get_full_path_file(path_file, packet.data, socket_id);
                 file = fopen(path_file, "rb");
                 create_ack(&ack, packet.packet_id, get_file_size(file));
-                send_ack(&ack, socket_id, &si_client, slen);
-                packet_id = send_file(path_file, socket_id, &si_client, slen, packet_id);
                 fclose(file);
+                send_ack(&ack, socket_id, &si_client, slen);
+                printf("%s\n", path_file);
+                packet_id = send_file(path_file, socket_id, &si_client, slen, packet_id, 'c');
                 free(path_file);
 
             case Data_type:

@@ -191,7 +191,7 @@ int receive_packet(char *buffer, int socket_id, struct sockaddr_in *si_other, un
     return recv_len;
 }
 
-int send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id) {    
+int send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id, char destination) {    
 
     FILE *file = fopen(file_name, "rb");
     if(!file) {
@@ -206,10 +206,11 @@ int send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsi
     uint32_t file_pos = 0;
     uint32_t block_amount = ceil(file_size/sizeof(buf_data));
 
-    //file header packet
-    create_packet(&packet, Header_type, packet_id, file_size, file_name);
-    await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
-    
+    if(destination == 's') {
+        //file header packet
+        create_packet(&packet, Header_type, packet_id, file_size, file_name);
+        await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
+    }
     //Send all file data in block_amount packets
     while (file_pos <= block_amount) {
         packet_id++;
