@@ -82,7 +82,10 @@ void receive_client(char *file_name) {
         printf("%d\n", ack.util);
     }
 
-    receive_file(file_name, ack.util, 0, socket_id);
+    if(ack.util >= 0)
+        receive_file(file_name, ack.util, 0, socket_id);
+    else
+        printf("This file does not exists!\n");
 }
 
 int login_server(char *host, int port) {

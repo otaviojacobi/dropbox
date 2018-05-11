@@ -81,7 +81,7 @@ typedef struct packet {
 
 typedef struct ack {
     uint8_t packet_type;
-    uint32_t util;
+    int32_t util;
     uint32_t packet_id;
     uint32_t info;
 } Ack;

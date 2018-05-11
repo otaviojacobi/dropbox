@@ -93,6 +93,7 @@ void* handle_user(void* args) {
     char *path_file;
     FILE *file;
     uint32_t packet_id = 0;
+    int32_t file_size;
 
     while(true) {
 
@@ -123,9 +124,11 @@ void* handle_user(void* args) {
                 path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
                 get_full_path_file(path_file, packet.data, socket_id);
                 file = fopen(path_file, "rb");
-                create_ack(&ack, packet.packet_id, get_file_size(file));
-                fclose(file);
+                file_size = file ? get_file_size(file) : -1;
+                create_ack(&ack, packet.packet_id, file_size);
                 send_ack(&ack, socket_id, &si_client, slen);
+                if(file_size == -1) break;
+                fclose(file);
                 printf("%s\n", path_file);
                 packet_id = send_file(path_file, socket_id, &si_client, slen, packet_id, 'c');
                 free(path_file);
