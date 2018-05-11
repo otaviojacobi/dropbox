@@ -11,6 +11,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <math.h>
+#include <time.h>
 #include <pthread.h>
 #include <arpa/inet.h>
 #include <sys/time.h>
@@ -19,6 +20,7 @@
 #include <sys/socket.h>
 
 #include <map>
+#include <list>
 
 #define PACKET_SIZE 1024
 #define PACKET_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
@@ -36,7 +38,6 @@
 static char *SERVER_DEFAULT = "127.0.0.1";
 struct	file_info	{
     char name[MAXNAME];
-    char extension[MAXNAME];
     char last_modified[MAXNAME];
     int size;
 };
@@ -44,7 +45,7 @@ struct	file_info	{
 typedef struct	client	{
     int devices[2];
     char user_name[MAXNAME];
-    struct	file_info[MAXFILES];
+    std::list<struct file_info> info;
     int logged_in;
 
 } Client;
@@ -108,4 +109,6 @@ void await_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struc
 int send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id, char destination);
 void format_file_name(char *file_name);
 void get_sync_path(char *full_path, char *USER, char *file_name);
+void get_file_metadata(struct file_info *file, char* file_name, int socket_id, int file_size);
+
 #endif

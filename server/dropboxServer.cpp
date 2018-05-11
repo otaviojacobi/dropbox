@@ -88,6 +88,7 @@ void* handle_user(void* args) {
     int recv_len;
     Packet packet;
     Ack ack;
+    struct file_info file_metadata;
     struct sockaddr_in si_client;
     unsigned int slen = sizeof(si_client);
     char *path_file;
@@ -106,6 +107,10 @@ void* handle_user(void* args) {
         //print details of the client/peer and the data received
         printf("Received packet from %s:%d\n", inet_ntoa(si_client.sin_addr), ntohs(si_client.sin_port));
         
+        path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
+        get_full_path_file(path_file, packet.data, socket_id);
+
+        
         switch(packet.packet_type) {
             case Client_login_type:
                 printf("Error: You have logged in already !\n");
@@ -114,15 +119,12 @@ void* handle_user(void* args) {
             case Header_type:
                 create_ack(&ack, packet.packet_id, packet.packet_info);
                 send_ack(&ack, socket_id, &si_client, slen);
-                path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
-                get_full_path_file(path_file, packet.data, socket_id);
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id);
-                free(path_file);
+                get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info);
+                clients[socket_id].info.push_back(file_metadata);
                 break;
 
             case Download_type:
-                path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
-                get_full_path_file(path_file, packet.data, socket_id);
                 file = fopen(path_file, "rb");
                 file_size = file ? get_file_size(file) : -1;
                 create_ack(&ack, packet.packet_id, file_size);
@@ -130,7 +132,6 @@ void* handle_user(void* args) {
                 if(file_size == -1) break;
                 fclose(file);
                 packet_id = send_file(path_file, socket_id, &si_client, slen, packet_id, 'c');
-                free(path_file);
 
             case Data_type:
                 printf("Error: not supposed to be Data_type case THREAD\n");
@@ -138,6 +139,7 @@ void* handle_user(void* args) {
 
             default: printf("The packet type is not supported!\n");
         }
+        free(path_file);
     }
 }
 

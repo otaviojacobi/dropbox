@@ -35,8 +35,9 @@ int main(int argc, char **argv) {
 
             case Upload:
                 scanf("%s", command_parameter); // files names are not allowed to have spaces. TODO: fix this
-                get_sync_path(full_path, USER, command_parameter);
-                next_id = send_file(full_path, socket_id, &si_other, slen, get_id(), 's');
+                //get_sync_path(full_path, USER, command_parameter);
+                printf("%s\n", command_parameter);
+                next_id = send_file(command_parameter, socket_id, &si_other, slen, get_id(), 's');
                 break;
 
             case Download:

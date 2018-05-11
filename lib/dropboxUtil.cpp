@@ -252,10 +252,12 @@ void send_packet(Packet *packet, int socket_id, struct sockaddr_in *si_other, un
     }
 }
 void format_file_name(char *file_name) {
-    int i;
+    int i ,last = 0;
     for(i = 0; i < strlen(file_name); i++)
-        if ( file_name[i] == '/' ) break;
-    strcpy(file_name, &file_name[i+1]);
+        if ( file_name[i] == '/' ) last = i;
+
+    if(last != 0)
+        strcpy(file_name, &file_name[last+1]);
 }
 
 void get_sync_path(char *full_path, char *USER, char *file_name) {
@@ -263,4 +265,20 @@ void get_sync_path(char *full_path, char *USER, char *file_name) {
     strcat(full_path, USER);
     strcat(full_path, "/");
     strcat(full_path, file_name);
+}
+
+void get_file_metadata(struct file_info *file, char* file_name, int socket_id, int file_size) {
+
+    time_t rawtime;
+    struct tm *timeinfo;
+    char buffer[80];
+
+    time (&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime(buffer,sizeof(buffer),"%d-%m-%Y %I:%M:%S",timeinfo);
+
+    strcpy(file->name, file_name);
+    file->size = file_size;
+    strcpy(file->last_modified, buffer);
+
 }
