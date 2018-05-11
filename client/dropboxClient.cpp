@@ -16,6 +16,7 @@ int main(int argc, char **argv) {
     char *SERVER = argc >= 3 ? argv[2] : SERVER_DEFAULT;
     int PORT = argc >= 4 ? atoi(argv[3]) : DEFAULT_PORT;
     int action;
+    char full_path[MAXNAME+10];
     
     slen = sizeof(si_other);
 
@@ -34,12 +35,13 @@ int main(int argc, char **argv) {
 
             case Upload:
                 scanf("%s", command_parameter); // files names are not allowed to have spaces. TODO: fix this
-                next_id = send_file(command_parameter, socket_id, &si_other, slen, get_id(), 's');
+                get_sync_path(full_path, USER, command_parameter);
+                next_id = send_file(full_path, socket_id, &si_other, slen, get_id(), 's');
                 break;
 
             case Download:
                 scanf("%s", command_parameter);
-                receive_client(command_parameter);
+                receive_client(command_parameter, USER);
                 break;
 
             case List_server:            
@@ -69,8 +71,9 @@ int main(int argc, char **argv) {
 }
 
 
-void receive_client(char *file_name) {
+void receive_client(char *file_name, char *USER) {
     char buf[PACKET_SIZE];
+    char full_path[MAXNAME+10];
     Packet packet;
     Ack ack;
     
@@ -79,11 +82,12 @@ void receive_client(char *file_name) {
 
     if((uint8_t)buf[0] == Ack_type) {
         memcpy(&ack, buf, sizeof(ack));
-        printf("%d\n", ack.util);
     }
+    
+    get_sync_path(full_path, USER, file_name);
 
     if(ack.util >= 0)
-        receive_file(file_name, ack.util, 0, socket_id);
+        receive_file(full_path, ack.util, 0, socket_id);
     else
         printf("This file does not exists!\n");
 }
@@ -93,14 +97,29 @@ int login_server(char *host, int port) {
     char buf[PACKET_SIZE];
     Packet login_packet;
     Ack ack;
+    char full_path[MAXNAME+10];
+
+    strcpy(full_path, "sync_dir_");
+    strcat(full_path, host);
+    DIR* dir = opendir(full_path);
+
+    if (dir)
+        closedir(dir);
+    else // Directory does not exist. 
+        mkdir(full_path, 0700);
+
     
     create_packet(&login_packet, Client_login_type, get_id(), 0, host); //sdds construtor
     await_send_packet(&login_packet, &ack, buf, socket_id, &si_other, slen);
 
     if((uint8_t)buf[0] == Ack_type) {
         memcpy(&ack, buf, sizeof(ack));
-        ack.util == New_user ? printf("This is your first time! We're creating your account...\n")
-                             : printf("Loggin you in...\n");
+        if ( ack.util == New_user ) {
+            printf("This is your first time! We're creating your account...\n");
+
+        } else {
+            printf("Loggin you in...\n");
+        }
     }
     else {
        kill("We failed to log you in. Try again later!\n");

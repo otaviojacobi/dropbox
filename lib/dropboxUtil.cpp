@@ -208,6 +208,7 @@ int send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsi
 
     if(destination == 's') {
         //file header packet
+        format_file_name(file_name);
         create_packet(&packet, Header_type, packet_id, file_size, file_name);
         await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
     }
@@ -249,4 +250,17 @@ void send_packet(Packet *packet, int socket_id, struct sockaddr_in *si_other, un
         close(socket_id);        
         kill("Failed to send packet...\n");
     }
+}
+void format_file_name(char *file_name) {
+    int i;
+    for(i = 0; i < strlen(file_name); i++)
+        if ( file_name[i] == '/' ) break;
+    strcpy(file_name, &file_name[i+1]);
+}
+
+void get_sync_path(char *full_path, char *USER, char *file_name) {
+    strcpy(full_path, "sync_dir_");
+    strcat(full_path, USER);
+    strcat(full_path, "/");
+    strcat(full_path, file_name);
 }

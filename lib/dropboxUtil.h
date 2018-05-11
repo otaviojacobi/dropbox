@@ -104,5 +104,5 @@ void receive_file(char *file, uint32_t file_size, uint32_t packet_id, int socket
 void send_packet(Packet *packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
 void await_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
 int send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id, char destination);
-
+void format_file_name(char *file_name);
 #endif

@@ -10,6 +10,6 @@ void get_file(char *file);
 void delete_file(char *file);
 void close_session();
 uint32_t get_id();
-void receive_client(char *file_name);
+void receive_client(char *file_name, char* USER);
 
 #endif
