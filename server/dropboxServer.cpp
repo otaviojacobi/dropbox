@@ -97,7 +97,7 @@ void* handle_user(void* args) {
 
     while(true) {
 
-        printf("THREAD RODANDO ANTES %d\n", socket_id);
+        printf("Thread user %s\n", clients[socket_id].user_name);
 
         //try to receive some data, this is a blocking call
         if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_client, &slen)) == -1)
@@ -129,7 +129,6 @@ void* handle_user(void* args) {
                 send_ack(&ack, socket_id, &si_client, slen);
                 if(file_size == -1) break;
                 fclose(file);
-                printf("%s\n", path_file);
                 packet_id = send_file(path_file, socket_id, &si_client, slen, packet_id, 'c');
                 free(path_file);
 
