@@ -51,7 +51,7 @@ int main(int argc, char **argv) {
                 break;
 
             case Get_sync_dir:            
-                printf("Not yet implemented\n");            
+                sync_client();       
                 break;
 
             case Exit:
@@ -66,13 +66,63 @@ int main(int argc, char **argv) {
     return 0;
 }
 
+void sync_client() {
+    char buf[PACKET_SIZE];
+    Packet packet;
+    Ack ack;
+    int packets_received = 0;
+    int packets_to_receive;
+    char file_names[MAXFILES][MAXNAME];
+    char file_name[MAXNAME];
+    int cur_char, cur_split = 0, cur_file = 0;
+
+
+    create_packet(&packet, List_type, get_id(), 0, ""); //sdds construtor
+    await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+
+    packets_to_receive = ack.util;
+
+    if(packets_to_receive == 0) {
+        printf("Your remote sync_dir is empty, upload your first file !\n");
+        return;
+    }
+
+    do {
+        receive_packet(buf, socket_id, &si_other, &slen);
+        memcpy(&packet, buf, PACKET_SIZE);
+        create_ack(&ack, packet.packet_id, packet.packet_info);
+        if(buf[0] == Data_type) {
+            //This is just formating a bunch of strings cause I was too lazy to think about something better
+            if(packets_received == 0) {
+                for(cur_char = 0; cur_char < strlen(packet.data); cur_char++) {
+                    if(packet.data[cur_char] == '\n') cur_split++;
+                    if(cur_split == 2) {
+                        strcpy(file_name, &packet.data[cur_char+1]);
+                        break;
+                    }
+                }
+            } else { 
+                strcpy(file_name, packet.data);
+            }
+            for(cur_char=0; file_name[cur_char] != '\t'; cur_char++) {}
+            file_name[cur_char] = '\0';
+            strcpy(file_names[packets_received], file_name);
+            packets_received++;
+        }
+        send_ack(&ack, socket_id, &si_other, slen);
+    } while(packets_received < packets_to_receive);
+
+    for(cur_file = 0; cur_file < packets_received; cur_file++) {
+        get_file(file_names[cur_file]);
+    }
+}
+
 void list_server(void) {
     char buf[PACKET_SIZE];
     Packet packet;
     Ack ack;
     int packets_received = 0;
     int packets_to_receive;
-
 
     create_packet(&packet, List_type, get_id(), 0, ""); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
@@ -144,7 +194,7 @@ void get_file(char *file) {
     char full_path[MAXNAME+10];
     Packet packet;
     Ack ack;
-    
+
     create_packet(&packet, Download_type, get_id(), 0, file); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
 

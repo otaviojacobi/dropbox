@@ -128,7 +128,7 @@ void* handle_user(void* args) {
         path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
         get_full_path_file(path_file, packet.data, socket_id);
 
-        
+        printf("%s", path_file);
         switch(packet.packet_type) {
             case Client_login_type:
                 printf("Error: You have logged in already !\n");
