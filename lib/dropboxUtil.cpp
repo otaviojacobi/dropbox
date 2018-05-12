@@ -77,7 +77,7 @@ void string_tolower(char *p) {
 
 void print_info(char *USER, char *version) {
     
-    printf("Arthur Marques Medeiros - XXXXXX\n");
+    printf("Arthur Marques Medeiros - 261587\n");
     printf("Flavia de Avila Pereira - 136866\n");
     printf("Otavio Flores Jacobi - 261569\n");
     printf("Priscila Cavalli Rachevsky - 261573\n");
