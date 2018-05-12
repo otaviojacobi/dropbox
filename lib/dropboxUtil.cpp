@@ -264,19 +264,3 @@ void get_sync_path(char *full_path, char *USER, char *file_name) {
     strcat(full_path, "/");
     strcat(full_path, file_name);
 }
-
-void get_file_metadata(struct file_info *file, char* file_name, int socket_id, int file_size) {
-
-    time_t rawtime;
-    struct tm *timeinfo;
-    char buffer[80];
-
-    time (&rawtime);
-    timeinfo = localtime(&rawtime);
-    strftime(buffer,sizeof(buffer),"%d-%m-%Y %I:%M:%S",timeinfo);
-
-    strcpy(file->name, file_name);
-    file->size = file_size;
-    strcpy(file->last_modified, buffer);
-
-}

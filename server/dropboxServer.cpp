@@ -138,8 +138,8 @@ void* handle_user(void* args) {
                 create_ack(&ack, packet.packet_id, packet.packet_info);
                 send_ack(&ack, socket_id, &si_client, slen);
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id);
-                get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info);
-                clients[socket_id].info.push_back(file_metadata);
+                if(!get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info))
+                    clients[socket_id].info.push_back(file_metadata);
                 break;
 
             case Download_type:
@@ -201,8 +201,8 @@ char *file_info_serialize(struct file_info info, char *serialized_info, int pos)
     sprintf(buf, "%d", info.size);
 
     if(pos == 0) {
-        strcpy(serialized_info, "Name\t\tLast modified on\tSize(Bytes)\n");
-        strcat(serialized_info, "----------------------------------------------------\n");
+        strcpy(serialized_info, "Name\t\tLast modified on\tSize(Bytes)\tCreated\n");
+        strcat(serialized_info, "--------------------------------------------------------------\n");
         strcat(serialized_info, info.name);
     } else {
         strcpy(serialized_info, info.name);
@@ -214,8 +214,9 @@ char *file_info_serialize(struct file_info info, char *serialized_info, int pos)
     strcat(serialized_info, info.last_modified);
     strcat(serialized_info, "\t");
     strcat(serialized_info, buf);
-    strcat(serialized_info, "\n");
-    
+    strcat(serialized_info, "\t\t");
+    strcat(serialized_info, info.created);
+    strcat(serialized_info, "\n");    
 } 
 
 int check_login_status(char *host) {
@@ -279,4 +280,33 @@ uint32_t create_user_socket(int *id) {
 
 
     return current_port;
+}
+
+/*Sorry, this has many, many side effects.*/
+int get_file_metadata(struct file_info *file, char* file_name, int socket_id, int file_size) {
+
+    time_t rawtime;
+    struct tm *timeinfo;
+    char buffer[80];
+    int exists = false;
+
+    time (&rawtime);
+    timeinfo = localtime(&rawtime);
+    strftime(buffer,sizeof(buffer),"%d-%m-%Y %I:%M:%S",timeinfo);
+
+    for (std::list<struct file_info>::iterator iterator = clients[socket_id].info.begin(), 
+            end = clients[socket_id].info.end(); iterator != end; ++iterator) {
+        if(strcmp((*iterator).name, file_name) == 0) {
+            strcpy((*iterator).last_modified, buffer);    
+            exists = true;
+        }
+    }
+
+    strcpy(file->name, file_name);
+    file->size = file_size;
+    strcpy(file->last_modified, buffer);
+    if(!exists)
+        strcpy(file->created, buffer);
+
+    return exists;
 }
