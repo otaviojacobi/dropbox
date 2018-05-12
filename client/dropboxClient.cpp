@@ -34,7 +34,6 @@ int main(int argc, char **argv) {
 
             case Upload:
                 scanf("%s", command_parameter); // files names are not allowed to have spaces. TODO: fix this
-                printf("%s\n", command_parameter);
                 send_file(command_parameter);
                 break;
 

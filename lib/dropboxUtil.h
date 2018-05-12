@@ -1,4 +1,3 @@
-#pragma once
 #ifndef _DROPBOXUTIL_H_
 #define _DROPBOXUTIL_H_
 

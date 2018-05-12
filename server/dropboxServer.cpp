@@ -58,6 +58,17 @@ void receive_login_server(char *host, int packet_id, int socket_id, struct socka
     Ack ack;
     ack.packet_type = Ack_type;
     ack.packet_id = packet_id;
+    int is_online = check_if_online(host);
+    uint32_t port;
+
+    if(is_online) {
+        clients[is_online].devices[1] = clients[is_online].devices[0]; // This is the server port listening for them
+        port = clients[is_online].devices[0];
+    } else {
+        port = create_user_socket(&new_socket_id);
+        bind_user_to_server( host, new_socket_id, port);
+        pthread_create(&logged_client, NULL, handle_user, (void*) &new_socket_id);
+    }
 
     switch(status) {
         case Old_user:
@@ -73,13 +84,19 @@ void receive_login_server(char *host, int packet_id, int socket_id, struct socka
         default: printf("Failed to login.\n");
     }
 
-    uint32_t port = create_user_socket(&new_socket_id);
-    bind_user_to_server( host, new_socket_id, port);
-    pthread_create(&logged_client, NULL, handle_user, (void*) &new_socket_id);
     ack.info = port;
-
     send_ack(&ack, socket_id, si_other, slen);
     printf("User %s Logged in.\n", host);
+}
+
+int check_if_online(char *host) {
+    for (std::map<int,Client>::iterator it=clients.begin(); it!=clients.end(); ++it) {
+
+        if(strcmp(it->second.user_name, host) == 0) {
+            return it->first;
+        }
+    }
+    return 0;
 }
 
 void* handle_user(void* args) {
@@ -185,7 +202,7 @@ char *file_info_serialize(struct file_info info, char *serialized_info, int pos)
 
     if(pos == 0) {
         strcpy(serialized_info, "Name\t\tLast modified on\tSize(Bytes)\n");
-        strcat(serialized_info, "-------------------------------------\n");
+        strcat(serialized_info, "----------------------------------------------------\n");
         strcat(serialized_info, info.name);
     } else {
         strcpy(serialized_info, info.name);
@@ -226,6 +243,7 @@ void bind_user_to_server(char *user_name, int socket_id, uint32_t port ) {
     Client client;
 
     client.devices[0] = port;
+    client.devices[1] = -1;
     strcpy(client.user_name, user_name);
     clients.insert(std::pair<int, Client>(socket_id, client));
     printf("Binded %d to %s\n", socket_id, clients[socket_id].user_name);
