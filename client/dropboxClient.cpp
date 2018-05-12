@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
                 break;
 
             case List_client:            
-                printf("Not yet implemented\n");            
+                list_client();           
                 break;
 
             case Get_sync_dir:            
@@ -64,6 +64,44 @@ int main(int argc, char **argv) {
  
     close(socket_id);
     return 0;
+}
+
+void list_client() {
+    DIR *dir;
+    struct dirent *dirStruct;
+    char full_path[80];
+    char file_name[80];
+
+    strcpy(full_path, "sync_dir_");
+    strcat(full_path, USER);
+    dir = opendir(full_path);
+
+    if (dir) {
+        printf("Name\t\tmtime\t\t\t\tatime\t\t\t\tctime\n");
+        printf("--------------------------------------------------------------------------------------------------------\n");
+        
+        while ((dirStruct = readdir(dir)) != NULL) {
+            strcpy(file_name, dirStruct->d_name);
+
+            struct stat fileStat;
+            if(lstat(file_name,&fileStat) < 0)    
+                printf("Error: cannot stat file <%s>\n", file_name);
+            else {
+                printf("%s\t", file_name);
+                print_time(fileStat.st_mtime);
+                printf("\t");
+                print_time(fileStat.st_atime);
+                printf("\t");
+                print_time(fileStat.st_ctime);
+                printf("\n");
+            }
+        }
+        closedir(dir);
+
+    }
+    else {
+        printf("Error: cannot open diretory %s\n", full_path);
+    }
 }
 
 void sync_client() {
@@ -220,4 +258,13 @@ void close_session() {
 
 uint32_t get_id() {
     return ++next_id;
+}
+
+void print_time(long int stat_time) {
+    time_t t = stat_time;
+    struct tm lt;
+    localtime_r(&t, &lt);
+    char timbuf[80];
+    strftime(timbuf, sizeof(timbuf), "%c", &lt);
+    printf("%s", timbuf);
 }
