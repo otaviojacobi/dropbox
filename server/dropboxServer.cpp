@@ -67,7 +67,7 @@ void receive_login_server(char *host, int packet_id, int socket_id, struct socka
     } else {
         port = create_user_socket(new_socket_id);
         bind_user_to_server( host, *new_socket_id, port);
-        pthread_create(&logged_client, NULL, handle_user, (void*) new_socket_id);
+        pthread_create(&logged_client, NULL, handle_user, (void*) new_socket_id); // WATCH OUT : new_socket_id will be freed
     }
 
     switch(status) {
