@@ -66,7 +66,8 @@ enum packet_types {
     Download_type,
     Data_type,
     Header_type,
-    Ack_type
+    Ack_type,
+    List_type
 };
 
 enum login_types {

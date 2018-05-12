@@ -11,7 +11,7 @@ void get_file(char *file); //done
 void delete_file(char *file); //TODO
 void close_session(); //done I think ?
 
-void list_server(); 
+void list_server(); //done
 
 uint32_t get_id();
 

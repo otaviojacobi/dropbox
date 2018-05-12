@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
                 break;
 
             case List_server:            
-                list_server_files();            
+                list_server();            
                 break;
 
             case List_client:            
@@ -65,6 +65,37 @@ int main(int argc, char **argv) {
  
     close(socket_id);
     return 0;
+}
+
+void list_server(void) {
+    char buf[PACKET_SIZE];
+    Packet packet;
+    Ack ack;
+    int packets_received = 0;
+    int packets_to_receive;
+
+
+    create_packet(&packet, List_type, get_id(), 0, ""); //sdds construtor
+    await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+
+    packets_to_receive = ack.util;
+
+    if(packets_to_receive == 0) {
+        printf("Your remote sync_dir is empty, upload your first file !\n");
+        return;
+    }
+
+    do {
+        receive_packet(buf, socket_id, &si_other, &slen);
+        memcpy(&packet, buf, PACKET_SIZE);
+        create_ack(&ack, packet.packet_id, packet.packet_info);
+        if(buf[0] == Data_type) {
+            printf("%s", packet.data);
+            packets_received++;
+        }
+        send_ack(&ack, socket_id, &si_other, slen);
+    } while(packets_received < packets_to_receive);
+
 }
 
 int login_server(char *host, int port) {

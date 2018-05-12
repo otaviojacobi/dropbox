@@ -123,9 +123,7 @@ void set_socket_timeout(int socket_id) {
 }
 
 int match_ack_packet(Ack *ack, Packet *packet) {
-    return packet->packet_type == Client_login_type || packet->packet_type == Download_type ?
-           (ack->packet_id == packet->packet_id) :
-           ((ack->packet_id == packet->packet_id) && (ack->util == packet->packet_info));
+    return ack->packet_id == packet->packet_id;
 }
 
 void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int socket_id) {

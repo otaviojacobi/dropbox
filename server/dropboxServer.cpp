@@ -95,6 +95,7 @@ void* handle_user(void* args) {
     FILE *file;
     uint32_t packet_id = 0;
     int32_t file_size;
+    int file_amount;
 
     while(true) {
 
@@ -132,6 +133,15 @@ void* handle_user(void* args) {
                 if(file_size == -1) break;
                 fclose(file);
                 packet_id = send_file_chunks(path_file, socket_id, &si_client, slen, packet_id, 'c');
+                break;
+
+            case List_type:
+                file_amount = get_file_amount(socket_id);
+                create_ack(&ack, packet.packet_id, file_amount);
+                send_ack(&ack, socket_id, &si_client, slen);
+                if(file_amount > 0)
+                    packet_id = send_current_files(socket_id, &si_client, slen, packet_id);
+                break;
 
             case Data_type:
                 printf("Error: not supposed to be Data_type case THREAD\n");
@@ -142,6 +152,54 @@ void* handle_user(void* args) {
         free(path_file);
     }
 }
+
+int get_file_amount(int socket_id) {
+    clients[socket_id].info.size();
+}
+ 
+int send_current_files(int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id) {
+    Packet packet;
+    Ack ack;
+    char buf[PACKET_SIZE];
+    char serialized_info[DATA_PACKET_SIZE];
+    int i = 0;
+
+    for (std::list<struct file_info>::const_iterator iterator = clients[socket_id].info.begin(), 
+                end = clients[socket_id].info.end(); iterator != end; ++iterator) {
+        
+        file_info_serialize(*iterator, serialized_info, i);
+        create_packet(&packet, Data_type, packet_id, 0, serialized_info);
+        await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
+        i++;
+    }
+
+
+    return packet_id;
+}
+
+char *file_info_serialize(struct file_info info, char *serialized_info, int pos) {
+
+    char buf[15];
+    int i = 0;
+    sprintf(buf, "%d", info.size);
+
+    if(pos == 0) {
+        strcpy(serialized_info, "Name\t\tLast modified on\tSize(Bytes)\n");
+        strcat(serialized_info, "-------------------------------------\n");
+        strcat(serialized_info, info.name);
+    } else {
+        strcpy(serialized_info, info.name);
+    }
+    
+    strcat(serialized_info, "\t");
+    if(strlen(info.name) < 7)
+        strcat(serialized_info, "\t");       
+    strcat(serialized_info, info.last_modified);
+    strcat(serialized_info, "\t");
+    strcat(serialized_info, buf);
+    strcat(serialized_info, "\n");
+    
+} 
 
 int check_login_status(char *host) {
 
