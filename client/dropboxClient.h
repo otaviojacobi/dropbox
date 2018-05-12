@@ -9,8 +9,10 @@ void sync_client(); //TODO
 void get_file(char *file); //done
 void delete_file(char *file); //TODO
 void close_session(); //done I think ?
+void print_time(long int stat_time);
 
 void list_server(); //done
+void list_client();
 
 uint32_t get_id();
 
