@@ -54,7 +54,7 @@ void receive_login_server(char *host, int packet_id, int socket_id, struct socka
 
     pthread_t logged_client;
     int status = check_login_status(host);
-    int new_socket_id;
+    int *new_socket_id = (int *) malloc (sizeof(int));
     Ack ack;
     ack.packet_type = Ack_type;
     ack.packet_id = packet_id;
@@ -65,8 +65,8 @@ void receive_login_server(char *host, int packet_id, int socket_id, struct socka
         clients[is_online].devices[1] = clients[is_online].devices[0]; // This is the server port listening for them
         port = clients[is_online].devices[0];
     } else {
-        port = create_user_socket(&new_socket_id);
-        bind_user_to_server( host, new_socket_id, port);
+        port = create_user_socket(new_socket_id);
+        bind_user_to_server( host, *new_socket_id, port);
         pthread_create(&logged_client, NULL, handle_user, (void*) new_socket_id);
     }
 
@@ -100,7 +100,9 @@ int check_if_online(char *host) {
 }
 
 void* handle_user(void* args) {
-    int socket_id = (int ) args;
+    int *point_id = (int *) args;
+    int socket_id = *point_id;
+    free(point_id);
     int recv_len;
     Packet packet;
     Ack ack;
