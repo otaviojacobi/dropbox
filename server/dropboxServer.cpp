@@ -131,7 +131,7 @@ void* handle_user(void* args) {
                 send_ack(&ack, socket_id, &si_client, slen);
                 if(file_size == -1) break;
                 fclose(file);
-                packet_id = send_file(path_file, socket_id, &si_client, slen, packet_id, 'c');
+                packet_id = send_file_chunks(path_file, socket_id, &si_client, slen, packet_id, 'c');
 
             case Data_type:
                 printf("Error: not supposed to be Data_type case THREAD\n");

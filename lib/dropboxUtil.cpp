@@ -191,7 +191,7 @@ int receive_packet(char *buffer, int socket_id, struct sockaddr_in *si_other, un
     return recv_len;
 }
 
-int send_file(char *file_name, int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id, char destination) {    
+int send_file_chunks(char *file_name, int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id, char destination) {    
 
     FILE *file = fopen(file_name, "rb");
     if(!file) {

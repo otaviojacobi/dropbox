@@ -4,12 +4,15 @@
 
 #include "../lib/dropboxUtil.h"
 
-int login_server(char *host, int port);
-void sync_client();
-void get_file(char *file);
-void delete_file(char *file);
-void close_session();
+int login_server(char *host, int port); //done
+void send_file(char *file); //done
+void sync_client(); //TODO
+void get_file(char *file); //done
+void delete_file(char *file); //TODO
+void close_session(); //done I think ?
+
+void list_server(); 
+
 uint32_t get_id();
-void receive_client(char *file_name, char* USER);
 
 #endif
