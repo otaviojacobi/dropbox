@@ -253,14 +253,22 @@ void* sync_daemon (void *args) {
 			struct inotify_event *event = ( struct inotify_event * ) &buffer[ i ];
 			if ( event->len ) {
 				
-			/*
+			
 				if ( event->mask & IN_CREATE) {
 					if (event->mask & IN_ISDIR)
 						printf( "The directory %s was Created.\n", event->name );      
 					else
-						printf( "The file %s was Created with WD %d\n", event->name, event->wd );      
+						if (((event->name)[0] != '.') || ((event->name)[1] != 'g')) {
+							char *filepath_send = (char*) malloc(sizeof(char) * MAXNAME+10);
+							strcpy(filepath_send, folder_path);
+							strcat(filepath_send, "/");
+							strcat(filepath_send, event->name);
+							send_file(filepath_send);  
+							free(filepath_send);
+							printf( "The file %s was modified\n", filepath_send);   // for txt      
+						}
 				}
-			*/
+			
 			   
 				if ( event->mask & IN_CLOSE_WRITE) {
 					if (event->mask & IN_ISDIR)
