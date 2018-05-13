@@ -5,6 +5,7 @@ int socket_id;
 unsigned int slen;
 uint32_t next_id = 0;
 char *USER;
+pthread_mutex_t busy_client = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char **argv) {
     
@@ -313,9 +314,9 @@ void* sync_daemon (void *args) {
 				i += EVENT_SIZE + event->len;
 			}
 			
-		  }
-		  
 		}
+		
+	}
 		
 	
 	inotify_rm_watch( f, wd );
@@ -324,7 +325,11 @@ void* sync_daemon (void *args) {
 }
 
 void send_file(char *file) {
+	pthread_mutex_lock(&busy_client);
+	printf("upload pegou o mutex\n");
     next_id = send_file_chunks(file, socket_id, &si_other, slen, get_id(), 's');
+    printf("upload liberou o mutex\n");
+	pthread_mutex_unlock(&busy_client);
 }
 
 void get_file(char *file) {
@@ -332,6 +337,10 @@ void get_file(char *file) {
     char full_path[MAXNAME+10];
     Packet packet;
     Ack ack;
+    
+    
+	pthread_mutex_lock(&busy_client);
+	printf("download pegou o mutex\n");
 
     create_packet(&packet, Download_type, get_id(), 0, file); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
@@ -346,6 +355,9 @@ void get_file(char *file) {
         receive_file(full_path, ack.util, 0, socket_id);
     else
         printf("This file does not exists!\n");
+        
+    printf("download liberou o mutex\n");
+    pthread_mutex_unlock(&busy_client);
 }
 
 void close_session() {
