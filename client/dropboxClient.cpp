@@ -73,14 +73,17 @@ void list_client() {
     struct dirent *dirStruct;
     char full_path[80];
     char file_name[80];
+    struct stat file_stat;
 
     strcpy(full_path, "sync_dir_");
     strcat(full_path, USER);
     dir = opendir(full_path);
+    char buf[15];
+
 
     if (dir) {
-        printf("Name\t\tmtime\t\t\t\tatime\t\t\t\tctime\n");
-        printf("--------------------------------------------------------------------------------------------------------\n");
+        printf("Name\t\tmtime\t\t\t\tatime\t\t\t\tctime\t\t\t\tSize(Bytes)\n");
+        printf("--------------------------------------------------------------------------------------------------------------------------------\n");
         
         while ((dirStruct = readdir(dir)) != NULL) {
             strcpy(file_name, dirStruct->d_name);
@@ -88,17 +91,19 @@ void list_client() {
             strcat(full_path, USER);
             strcat(full_path, "/");
             strcat(full_path, file_name);
-            struct stat fileStat;
-            if(lstat(full_path,&fileStat) < 0)    
+            if(lstat(full_path,&file_stat) < 0)    
                 printf("Error: cannot stat file <%s>\n", full_path);
-            else {
+            else if(strcmp(file_name, "..") != 0 && strcmp(file_name, ".") != 0){
                 printf("%s\t", file_name);
-                print_time(fileStat.st_mtime);
+                if(strlen(file_name) < 7) printf("\t");
+                print_time(file_stat.st_mtime);
                 printf("\t");
-                print_time(fileStat.st_atime);
+                print_time(file_stat.st_atime);
                 printf("\t");
-                print_time(fileStat.st_ctime);
-                printf("\n");
+                print_time(file_stat.st_ctime);
+                printf("\t");
+                sprintf(buf, "%li", file_stat.st_size);
+                printf("%s\n", buf);
             }
         }
         closedir(dir);
