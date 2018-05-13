@@ -18,12 +18,19 @@
 #include <sys/stat.h>
 #include <sys/socket.h>
 
+#include <sys/inotify.h>
+
 #include <map>
 #include <list>
 
 #define PACKET_SIZE 1024
 #define PACKET_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
-#define DATA_PACKET_SIZE 1024-12 //PACKET_SIZE-PACKET_HEADER_SIZE
+#define DATA_PACKET_SIZE 1024-12 //PACKET_SIZE-PACKET_HEADER_SIZELEN_NAME
+
+#define MAX_EVENTS 1024 // Max. number of events to process at one go
+
+#define EVENT_SIZE  ( sizeof (struct inotify_event) ) // size of one event
+#define BUF_LEN     ( MAX_EVENTS * ( EVENT_SIZE + MAXNAME )) // buffer to store the data of events
 
 #define MAXNAME 100
 #define MAXFILES 100

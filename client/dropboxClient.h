@@ -11,6 +11,8 @@ void delete_file(char *file); //TODO
 void close_session(); //done I think ?
 void print_time(long int stat_time);
 
+void* sync_daemon (void *args);
+
 void list_server(); //done
 void list_client();
 

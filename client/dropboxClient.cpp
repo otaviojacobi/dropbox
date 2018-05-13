@@ -190,7 +190,8 @@ int login_server(char *host, int port) {
     char buf[PACKET_SIZE];
     Packet login_packet;
     Ack ack;
-    char full_path[MAXNAME+10];
+    char *full_path = (char*) malloc(sizeof(char) * MAXNAME+10);
+    pthread_t daemon;
 
     strcpy(full_path, "sync_dir_");
     strcat(full_path, host);
@@ -217,10 +218,98 @@ int login_server(char *host, int port) {
     else {
        kill("We failed to log you in. Try again later!\n");
     }
+    
+    pthread_create(&daemon, NULL, sync_daemon, (void*) full_path);
 
     socket_id = init_socket_client(ack.info, SERVER_DEFAULT, &si_other);
     //Maybe should return the packet id ?
     return 0;
+}
+
+void* sync_daemon (void *args) {
+	
+	char *folder_path = (char *) args;
+	int f = inotify_init();
+	int wd = inotify_add_watch(f, folder_path, IN_MODIFY | IN_CLOSE_WRITE);
+ 
+	if (wd == -1)
+		kill ("Creating watch failed.\n");
+	
+	while(true) {
+		
+		sleep(3);
+		
+		char buffer [BUF_LEN];
+		
+		int length = read( f, buffer, BUF_LEN ); 
+ 
+		if ( length < 0 ) {
+			kill ("Read error.\n");
+		} 
+	 
+	 
+		int i = 0;
+		while ( i < length ) {
+			struct inotify_event *event = ( struct inotify_event * ) &buffer[ i ];
+			if ( event->len ) {
+				
+			/*
+				if ( event->mask & IN_CREATE) {
+					if (event->mask & IN_ISDIR)
+						printf( "The directory %s was Created.\n", event->name );      
+					else
+						printf( "The file %s was Created with WD %d\n", event->name, event->wd );      
+				}
+			*/
+			   
+				if ( event->mask & IN_CLOSE_WRITE) {
+					if (event->mask & IN_ISDIR)
+						printf( "The directory %s was modified.\n", event->name );      
+					else {
+						char *filepath_send = (char*) malloc(sizeof(char) * MAXNAME+10);
+						strcpy(filepath_send, folder_path);
+						strcat(filepath_send, "/");
+						strcat(filepath_send, event->name);
+						send_file(filepath_send);  
+						free(filepath_send);
+						printf( "The file %s was modified\n", filepath_send);   // for txt
+					}
+				}
+				else if ( event->mask & IN_MODIFY) {
+					if (event->mask & IN_ISDIR)
+						printf( "The directory %s was modified.\n", event->name );      
+					else {
+						if (((event->name)[0] != '.') || ((event->name)[1] != 'g')) {
+							char *filepath_send = (char*) malloc(sizeof(char) * MAXNAME+10);
+							strcpy(filepath_send, folder_path);
+							strcat(filepath_send, "/");
+							strcat(filepath_send, event->name);
+							send_file(filepath_send);  
+							free(filepath_send);
+							printf( "The file %s was modified\n", filepath_send);  
+						}
+					}
+				}
+		/*	   
+				if ( event->mask & IN_DELETE) {
+					if (event->mask & IN_ISDIR)
+						printf( "The directory %s was deleted.\n", event->name );      
+					else
+						printf( "The file %s was deleted with WD %d\n", event->name, event->wd );      
+				} 
+			
+		*/	
+				i += EVENT_SIZE + event->len;
+			}
+			
+		  }
+		  
+		}
+		
+	
+	inotify_rm_watch( f, wd );
+	close( f );
+	
 }
 
 void send_file(char *file) {
