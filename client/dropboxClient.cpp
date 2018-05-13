@@ -82,10 +82,13 @@ void list_client() {
         
         while ((dirStruct = readdir(dir)) != NULL) {
             strcpy(file_name, dirStruct->d_name);
-
+            strcpy(full_path, "sync_dir_");
+            strcat(full_path, USER);
+            strcat(full_path, "/");
+            strcat(full_path, file_name);
             struct stat fileStat;
-            if(lstat(file_name,&fileStat) < 0)    
-                printf("Error: cannot stat file <%s>\n", file_name);
+            if(lstat(full_path,&fileStat) < 0)    
+                printf("Error: cannot stat file <%s>\n", full_path);
             else {
                 printf("%s\t", file_name);
                 print_time(fileStat.st_mtime);
@@ -125,6 +128,7 @@ void sync_client() {
         return;
     }
 
+
     do {
         receive_packet(buf, socket_id, &si_other, &slen);
         memcpy(&packet, buf, PACKET_SIZE);
@@ -149,7 +153,6 @@ void sync_client() {
         }
         send_ack(&ack, socket_id, &si_other, slen);
     } while(packets_received < packets_to_receive);
-
     for(cur_file = 0; cur_file < packets_received; cur_file++) {
         get_file(file_names[cur_file]);
     }

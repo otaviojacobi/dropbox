@@ -127,6 +127,7 @@ void* handle_user(void* args) {
         printf("Received packet from %s:%d\n", inet_ntoa(si_client.sin_addr), ntohs(si_client.sin_port));
         
         path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
+
         get_full_path_file(path_file, packet.data, socket_id);
 
         printf("%s", path_file);
@@ -154,7 +155,7 @@ void* handle_user(void* args) {
                 break;
 
             case List_type:
-                file_amount = get_file_amount(socket_id);
+                file_amount = get_file_amount(socket_id) - 2;
                 create_ack(&ack, packet.packet_id, file_amount);
                 send_ack(&ack, socket_id, &si_client, slen);
                 if(file_amount > 0)
@@ -172,7 +173,22 @@ void* handle_user(void* args) {
 }
 
 int get_file_amount(int socket_id) {
-    clients[socket_id].info.size();
+
+    DIR *dir;
+    struct dirent *ent;
+    int i = 0;
+    if ((dir = opendir (clients[socket_id].user_name)) != NULL) {
+    /* print all the files and directories within directory */
+    while ((ent = readdir (dir)) != NULL) {
+        i++;
+    }
+    closedir (dir);
+    } else {
+        perror ("");
+        return EXIT_FAILURE;
+    }
+
+    return i;
 }
  
 int send_current_files(int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id) {
@@ -180,45 +196,73 @@ int send_current_files(int socket_id, struct sockaddr_in *si_other, unsigned int
     Ack ack;
     char buf[PACKET_SIZE];
     char serialized_info[DATA_PACKET_SIZE];
+    DIR *dir;
+    struct dirent *ent;
+    char full_path[80];
+    char file_name[80];
     int i = 0;
+    struct stat file_stat;
+    dir = opendir(clients[socket_id].user_name);
 
-    for (std::list<struct file_info>::const_iterator iterator = clients[socket_id].info.begin(), 
-                end = clients[socket_id].info.end(); iterator != end; ++iterator) {
+    if (dir) {
         
-        file_info_serialize(*iterator, serialized_info, i);
-        create_packet(&packet, Data_type, packet_id, 0, serialized_info);
-        await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
-        i++;
+        while ((ent = readdir(dir)) != NULL) {
+            strcpy(file_name, ent->d_name);
+            if(strcmp(file_name, "..") != 0 && strcmp(file_name, ".") != 0) {
+                strcpy(full_path, clients[socket_id].user_name);
+                strcat(full_path, "/");
+                strcat(full_path, file_name);
+
+                if(lstat(full_path, &file_stat) < 0)    
+                    printf("Error: cannot stat file <%s>\n", full_path);
+                file_info_serialize(file_stat, serialized_info, file_name, i);
+                create_packet(&packet, Data_type, packet_id, 0, serialized_info);
+                await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
+                i++;
+                packet_id++;
+            }
+        }
+        closedir(dir);
+
+    }
+    else {
+        printf("Error: cannot open diretory %s\n", full_path);
     }
 
 
     return packet_id;
 }
 
-char *file_info_serialize(struct file_info info, char *serialized_info, int pos) {
+char *file_info_serialize(struct stat info, char *serialized_info, char* file_name, int pos) {
 
     char buf[15];
+    char time_buf[80];
     int i = 0;
-    sprintf(buf, "%d", info.size);
+
+    sprintf(buf, "%li", info.st_size);
 
     if(pos == 0) {
-        strcpy(serialized_info, "Name\t\tLast modified on\tSize(Bytes)\tCreated\n");
-        strcat(serialized_info, "--------------------------------------------------------------\n");
-        strcat(serialized_info, info.name);
+        strcpy(serialized_info, "Name\t\tmtime\t\t\t\tatime\t\t\t\tctime\t\t\t\tSize(Bytes)\n");
+        strcat(serialized_info, "--------------------------------------------------------------------------------------------------------------------------------\n");
+        strcat(serialized_info, file_name);
     } else {
-        strcpy(serialized_info, info.name);
+        strcpy(serialized_info, file_name);
     }
     
     strcat(serialized_info, "\t");
-    if(strlen(info.name) < 7)
-        strcat(serialized_info, "\t");       
-    strcat(serialized_info, info.last_modified);
-    strcat(serialized_info, "\t");
+    if(strlen(file_name) < 7)
+        strcat(serialized_info, "\t");
+
+    stat("alphabet",&info);
+    strcat(serialized_info, ctime(&info.st_mtime));
+    serialized_info[strlen(serialized_info) -1 ] = '\t';
+    strcat(serialized_info, ctime(&info.st_atime));
+    serialized_info[strlen(serialized_info) -1 ] = '\t';    
+    strcat(serialized_info, ctime(&info.st_ctime));
+    serialized_info[strlen(serialized_info) -1 ] = '\t';
     strcat(serialized_info, buf);
-    strcat(serialized_info, "\t\t");
-    strcat(serialized_info, info.created);
-    strcat(serialized_info, "\n");    
-} 
+    strcat(serialized_info, "\n");
+}
 
 int check_login_status(char *host) {
 
