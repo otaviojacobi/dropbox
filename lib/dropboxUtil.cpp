@@ -132,7 +132,9 @@ void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int s
     FILE *file_opened = fopen(path_file, "w+");
     
     char buf[PACKET_SIZE];
+    
     char buf_data[DATA_PACKET_SIZE];
+    
 
     uint32_t block_amount = ceil(file_size/sizeof(buf_data));
     

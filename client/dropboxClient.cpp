@@ -6,6 +6,7 @@ unsigned int slen;
 uint32_t next_id = 0;
 char *USER;
 pthread_mutex_t busy_client = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t syncing_client = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char **argv) {
     
@@ -118,7 +119,10 @@ void sync_client() {
     char file_name[MAXNAME];
     int cur_char, cur_split = 0, cur_file = 0;
 
-
+	printf("sync quer lockar\n");
+	pthread_mutex_lock(&syncing_client);
+	printf("sync lockou\n");
+	
     create_packet(&packet, List_type, get_id(), 0, ""); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
 
@@ -126,6 +130,7 @@ void sync_client() {
 
     if(packets_to_receive == 0) {
         printf("Your remote sync_dir is empty, upload your first file !\n");
+        pthread_mutex_unlock(&syncing_client);
         return;
     }
 
@@ -150,13 +155,18 @@ void sync_client() {
             for(cur_char=0; file_name[cur_char] != '\t'; cur_char++) {}
             file_name[cur_char] = '\0';
             strcpy(file_names[packets_received], file_name);
+            printf("Achou o arquivo: %s", file_names[packets_received]);
             packets_received++;
         }
         send_ack(&ack, socket_id, &si_other, slen);
     } while(packets_received < packets_to_receive);
+    
     for(cur_file = 0; cur_file < packets_received; cur_file++) {
         get_file(file_names[cur_file]);
     }
+    
+    pthread_mutex_unlock(&syncing_client);
+    printf("sync liberou\n");
 }
 
 void list_server(void) {
@@ -222,10 +232,13 @@ int login_server(char *host, int port) {
     else {
        kill("We failed to log you in. Try again later!\n");
     }
-    
-    pthread_create(&daemon, NULL, sync_daemon, (void*) full_path);
 
     socket_id = init_socket_client(ack.info, SERVER_DEFAULT, &si_other);
+    
+    sync_client();
+    
+    pthread_create(&daemon, NULL, sync_daemon, (void*) full_path);
+    
     //Maybe should return the packet id ?
     return 0;
 }
@@ -251,6 +264,10 @@ void* sync_daemon (void *args) {
 			kill ("Read error.\n");
 		} 
 	 
+	 
+		printf("Tring to sync... \n");
+		pthread_mutex_lock(&syncing_client);
+		printf("Syncing... \n");
 	 
 		int i = 0;
 		while ( i < length ) {
@@ -284,7 +301,7 @@ void* sync_daemon (void *args) {
 						strcat(filepath_send, event->name);
 						send_file(filepath_send);  
 						free(filepath_send);
-						printf( "The file %s was modified\n", filepath_send);   // for txt
+						printf( "1 The file %s was modified\n", filepath_send);   // for txt
 					}
 				}
 				else if ( event->mask & IN_MODIFY) {
@@ -298,26 +315,29 @@ void* sync_daemon (void *args) {
 							strcat(filepath_send, event->name);
 							send_file(filepath_send);  
 							free(filepath_send);
-							printf( "The file %s was modified\n", filepath_send);  
+							printf( "2 The file %s was modified\n", filepath_send);  
 						}
 					}
 				}
-		/*	   
-				if ( event->mask & IN_DELETE) {
-					if (event->mask & IN_ISDIR)
-						printf( "The directory %s was deleted.\n", event->name );      
-					else
-						printf( "The file %s was deleted with WD %d\n", event->name, event->wd );      
-				} 
+	//		   
+	//			if ( event->mask & IN_DELETE) {
+	//				if (event->mask & IN_ISDIR)
+	//					printf( "The directory %s was deleted.\n", event->name );      
+	//				else
+	//					printf( "The file %s was deleted with WD %d\n", event->name, event->wd );      
+	//			} 
 			
-		*/	
+	//		
 				i += EVENT_SIZE + event->len;
 			}
-			
+		
 		}
 		
+		pthread_mutex_unlock(&syncing_client);
+		printf("Sync lock released.\n");
 	}
-		
+	
+
 	
 	inotify_rm_watch( f, wd );
 	close( f );

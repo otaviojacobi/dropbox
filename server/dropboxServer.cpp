@@ -130,6 +130,7 @@ void* handle_user(void* args) {
 
         get_full_path_file(path_file, packet.data, socket_id);
 
+
         printf("%s", path_file);
         switch(packet.packet_type) {
             case Client_login_type:
