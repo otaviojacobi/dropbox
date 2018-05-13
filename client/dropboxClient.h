@@ -6,7 +6,7 @@
 int login_server(char *host, int port); //done
 void send_file(char *file); //done
 void sync_client(); //TODO
-void get_file(char *file); //done
+void get_file(char *file, int local); //done
 void delete_file(char *file); //TODO
 void close_session(); //done I think ?
 void print_time(long int stat_time);

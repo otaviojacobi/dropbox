@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
 
             case Download:
                 scanf("%s", command_parameter);
-                get_file(command_parameter);
+                get_file(command_parameter, 0);
                 break;
 
             case List_server:            
@@ -167,7 +167,7 @@ void sync_client() {
     } while(packets_received < packets_to_receive);
     
     for(cur_file = 0; cur_file < packets_received; cur_file++) {
-        get_file(file_names[cur_file]);
+        get_file(file_names[cur_file], 1);
     }
     
     pthread_mutex_unlock(&syncing_client);
@@ -212,8 +212,8 @@ int login_server(char *host, int port) {
     char *full_path = (char*) malloc(sizeof(char) * MAXNAME+10);
     pthread_t daemon, syncServer;
 
-    strcpy(full_path, "sync_dir_");
-    strcat(full_path, host);
+    get_sync_path(full_path, host, "");
+    
     DIR* dir = opendir(full_path);
 
     if (dir)
@@ -389,7 +389,7 @@ void send_file(char *file) {
 	pthread_mutex_unlock(&busy_client);
 }
 
-void get_file(char *file) {
+void get_file(char *file, int local) { // 0 = local, 1 = sync_dir
     char buf[PACKET_SIZE];
     char full_path[MAXNAME+10];
     Packet packet;
@@ -406,7 +406,12 @@ void get_file(char *file) {
         memcpy(&ack, buf, sizeof(ack));
     }
     
-    get_sync_path(full_path, USER, file);
+    if (local == 1)
+		get_sync_path(full_path, USER, file);
+	else {
+		strcat(full_path, "./");
+		strcat(full_path, file);
+	}
 
     if(ack.util >= 0)
         receive_file(full_path, ack.util, 0, socket_id);

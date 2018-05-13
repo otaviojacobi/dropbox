@@ -263,6 +263,9 @@ void format_file_name(char *file_name) {
 void get_sync_path(char *full_path, char *USER, char *file_name) {
     strcpy(full_path, "sync_dir_");
     strcat(full_path, USER);
-    strcat(full_path, "/");
+    
+    if (file_name[0] != 0)
+		strcat(full_path, "/");
+		
     strcat(full_path, file_name);
 }
