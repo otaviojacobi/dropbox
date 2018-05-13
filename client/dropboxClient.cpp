@@ -205,7 +205,7 @@ int login_server(char *host, int port) {
     Packet login_packet;
     Ack ack;
     char *full_path = (char*) malloc(sizeof(char) * MAXNAME+10);
-    pthread_t daemon;
+    pthread_t daemon, syncServer;
 
     strcpy(full_path, "sync_dir_");
     strcat(full_path, host);
@@ -238,6 +238,7 @@ int login_server(char *host, int port) {
     sync_client();
     
     pthread_create(&daemon, NULL, sync_daemon, (void*) full_path);
+    pthread_create(&syncServer, NULL, sync_server, NULL);
     
     //Maybe should return the packet id ?
     return 0;
@@ -344,6 +345,37 @@ void* sync_daemon (void *args) {
 	
 }
 
+void* sync_server(void *args)
+{
+    DIR *dir;
+    struct dirent *dirStruct;
+    char full_path[80];
+    char file_name[80], last_modified[30];
+    char buffer[DATA_PACKET_SIZE];
+
+    strcpy(full_path, SYNC_DIR);
+    strcat(full_path, USER);
+    dir = opendir(full_path);
+
+    if (dir) {
+        while ((dirStruct = readdir(dir)) != NULL) {
+            strcpy(file_name, dirStruct->d_name);
+            get_sync_path(full_path, USER, file_name);
+            struct stat fileStat;
+            if(lstat(full_path,&fileStat) < 0)    
+                printf("Error: cannot stat file <%s>\n", full_path);
+            else if(strcmp(file_name,".")!=0 && strcmp(file_name,"..")!=0)
+            {
+                timet_to_string(fileStat.st_mtime, last_modified, 30);
+                sprintf(buffer, "%s@%s", file_name, last_modified);
+                printf("%s\n", buffer);
+            }
+        }
+        closedir(dir);
+    }
+}
+
+
 void send_file(char *file) {
 	pthread_mutex_lock(&busy_client);
 	printf("upload pegou o mutex\n");
@@ -399,4 +431,12 @@ void print_time(long int stat_time) {
     char timbuf[80];
     strftime(timbuf, sizeof(timbuf), "%c", &lt);
     printf("%s", timbuf);
+}
+
+void delete_file(char *file_name)
+{
+    char full_path[MAXNAME+10];
+    get_sync_path(full_path, USER, file_name);
+    if(remove(full_path) != 0)
+        printf("Error deleting file\n");
 }
