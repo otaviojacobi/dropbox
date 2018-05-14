@@ -357,6 +357,7 @@ void get_file(char *file, int local) { // 0 = local, 1 = sync_dir
     
     
 	pthread_mutex_lock(&busy_client);
+	printf("download pegou o mutex\n");
 
     create_packet(&packet, Download_type, get_id(), 0, file); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);

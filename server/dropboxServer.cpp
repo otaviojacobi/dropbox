@@ -109,7 +109,7 @@ void* handle_user(void* args) {
     struct file_info file_metadata;
     struct sockaddr_in si_client;
     unsigned int slen = sizeof(si_client);
-    char *path_file;
+    char path_file[MAXNAME];
     FILE *file;
     uint32_t packet_id = 0;
     int32_t file_size;
@@ -126,12 +126,11 @@ void* handle_user(void* args) {
         //print details of the client/peer and the data received
         printf("Received packet from %s:%d\n", inet_ntoa(si_client.sin_addr), ntohs(si_client.sin_port));
         
-        path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
+        //path_file = (char *) malloc (strlen(packet.data) + strlen(clients[socket_id].user_name) + 1);
 
         get_full_path_file(path_file, packet.data, socket_id);
 
 
-        printf("%s", path_file);
         switch(packet.packet_type) {
             case Client_login_type:
                 printf("Error: You have logged in already !\n");
@@ -169,7 +168,7 @@ void* handle_user(void* args) {
 
             default: printf("The packet type is not supported!\n");
         }
-        free(path_file);
+        //free(path_file);
     }
 }
 
