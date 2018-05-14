@@ -272,7 +272,7 @@ int login_server(char *host, int port) {
 }
 
 void start_watch (char* folder_path) {
-	inotify_wd = inotify_add_watch(inotify_f, folder_path, IN_MODIFY | IN_CLOSE_WRITE);
+	inotify_wd = inotify_add_watch(inotify_f, folder_path, IN_MODIFY | IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE);
 }
 
 void stop_watch (char* folder_path) {
@@ -303,12 +303,11 @@ void* sync_daemon (void *args) {
 	 
 		int i = 0;
 		while ( i < length ) {
-			//printf("joaquim %d\n", i);
 			struct inotify_event *event = ( struct inotify_event * ) &buffer[ i ];
 			if ( event->len ) {
 				
 			
-				if ( event->mask & IN_CREATE) {
+				if ( event->mask && (IN_CREATE || IN_MOVED_TO)) {
 					if (event->mask & IN_ISDIR)
 						printf( "The directory %s was Created.\n", event->name );      
 					else

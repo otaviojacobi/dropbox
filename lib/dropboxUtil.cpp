@@ -206,6 +206,7 @@ int send_file_chunks(char *file_name, int socket_id, struct sockaddr_in *si_othe
     }
     Packet packet;
     Ack ack;
+    char *auxfname;
     char buf[PACKET_SIZE];
     char buf_data[DATA_PACKET_SIZE];
     uint32_t file_size = get_file_size(file);
@@ -214,9 +215,10 @@ int send_file_chunks(char *file_name, int socket_id, struct sockaddr_in *si_othe
 
     if(destination == 's') {
         //file header packet
+        auxfname = strdup(file_name);
         format_file_name(file_name);
         create_packet(&packet, Header_type, packet_id, file_size, file_name);
-        include_times_on_packet(&packet, file_name);
+        include_times_on_packet(&packet, auxfname);
         await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
     }
     //Send all file data in block_amount packets
@@ -237,7 +239,6 @@ int send_file_chunks(char *file_name, int socket_id, struct sockaddr_in *si_othe
 
 void include_times_on_packet (Packet *packet, char *file_name) {
 	struct stat buffer;
-	
 	
 	if (stat(file_name, &buffer) == -1)
 		kill("Error on reading file metadata.");
