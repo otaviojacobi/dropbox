@@ -124,9 +124,7 @@ void sync_client() {
     char file_name[MAXNAME];
     int cur_char, cur_split = 0, cur_file = 0;
 
-	printf("sync quer lockar\n");
 	pthread_mutex_lock(&syncing_client);
-	printf("sync lockou\n");
 	
     create_packet(&packet, List_type, get_id(), 0, ""); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
@@ -160,7 +158,6 @@ void sync_client() {
             for(cur_char=0; file_name[cur_char] != '\t'; cur_char++) {}
             file_name[cur_char] = '\0';
             strcpy(file_names[packets_received], file_name);
-            printf("Achou o arquivo: %s", file_names[packets_received]);
             packets_received++;
         }
         send_ack(&ack, socket_id, &si_other, slen);
@@ -171,7 +168,6 @@ void sync_client() {
     }
     
     pthread_mutex_unlock(&syncing_client);
-    printf("sync liberou\n");
 }
 
 void list_server(void) {
@@ -243,7 +239,6 @@ int login_server(char *host, int port) {
     sync_client();
     
     pthread_create(&daemon, NULL, sync_daemon, (void*) full_path);
-    pthread_create(&syncServer, NULL, sync_server, NULL);
     
     //Maybe should return the packet id ?
     return 0;
@@ -270,10 +265,7 @@ void* sync_daemon (void *args) {
 			kill ("Read error.\n");
 		} 
 	 
-	 
-		printf("Tring to sync... \n");
 		pthread_mutex_lock(&syncing_client);
-		printf("Syncing... \n");
 	 
 		int i = 0;
 		while ( i < length ) {
@@ -340,7 +332,6 @@ void* sync_daemon (void *args) {
 		}
 		
 		pthread_mutex_unlock(&syncing_client);
-		printf("Sync lock released.\n");
 	}
 	
 
@@ -349,37 +340,6 @@ void* sync_daemon (void *args) {
 	close( f );
 	
 }
-
-void* sync_server(void *args)
-{
-    DIR *dir;
-    struct dirent *dirStruct;
-    char full_path[80];
-    char file_name[80], last_modified[30];
-    char buffer[DATA_PACKET_SIZE];
-
-    strcpy(full_path, SYNC_DIR);
-    strcat(full_path, USER);
-    dir = opendir(full_path);
-
-    if (dir) {
-        while ((dirStruct = readdir(dir)) != NULL) {
-            strcpy(file_name, dirStruct->d_name);
-            get_sync_path(full_path, USER, file_name);
-            struct stat fileStat;
-            if(lstat(full_path,&fileStat) < 0)    
-                printf("Error: cannot stat file <%s>\n", full_path);
-            else if(strcmp(file_name,".")!=0 && strcmp(file_name,"..")!=0)
-            {
-                timet_to_string(fileStat.st_mtime, last_modified, 30);
-                sprintf(buffer, "%s@%s", file_name, last_modified);
-                printf("%s\n", buffer);
-            }
-        }
-        closedir(dir);
-    }
-}
-
 
 void send_file(char *file) {
 	pthread_mutex_lock(&busy_client);
@@ -397,7 +357,6 @@ void get_file(char *file, int local) { // 0 = local, 1 = sync_dir
     
     
 	pthread_mutex_lock(&busy_client);
-	printf("download pegou o mutex\n");
 
     create_packet(&packet, Download_type, get_id(), 0, file); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
@@ -441,12 +400,4 @@ void print_time(long int stat_time) {
     char timbuf[80];
     strftime(timbuf, sizeof(timbuf), "%c", &lt);
     printf("%s", timbuf);
-}
-
-void delete_file(char *file_name)
-{
-    char full_path[MAXNAME+10];
-    get_sync_path(full_path, USER, file_name);
-    if(remove(full_path) != 0)
-        printf("Error deleting file\n");
 }
