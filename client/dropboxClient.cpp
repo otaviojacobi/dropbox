@@ -2,6 +2,8 @@
 
 struct sockaddr_in si_other;
 int socket_id;
+int inotify_f;
+int inotify_wd;
 unsigned int slen;
 uint32_t next_id = 0;
 char *USER;
@@ -165,6 +167,7 @@ void list_server(void) {
     char buf[PACKET_SIZE];
     Packet packet;
     Ack ack;
+    ServerItem cur_item;
     int packets_received = 0;
     int packets_to_receive;
 
@@ -178,17 +181,48 @@ void list_server(void) {
         return;
     }
 
+	printf("Name\t\tmtime\t\t\t\tatime\t\t\t\tctime\t\t\t\tSize(Bytes)\n");
+    printf("--------------------------------------------------------------------------------------------------------------------------------\n");
+    
     do {
         receive_packet(buf, socket_id, &si_other, &slen);
         memcpy(&packet, buf, PACKET_SIZE);
         create_ack(&ack, packet.packet_id, packet.packet_info);
         if(buf[0] == Data_type) {
-            printf("%s", packet.data);
+            memcpy(&cur_item, packet.data, sizeof(ServerItem));
+			
+			print_item_info(cur_item);
+			
             packets_received++;
         }
         send_ack(&ack, socket_id, &si_other, slen);
     } while(packets_received < packets_to_receive);
 
+}
+
+void print_item_info (ServerItem item) {
+	char m[50];
+	char a[50];
+	char c[50];
+	printf("%s", item.name);
+	printf("\t");
+    if(strlen(item.name) < 7)
+        printf("\t");
+
+	strcpy(m, ctime(&item.mtime));
+	strcpy(a, ctime(&item.atime));
+	strcpy(c, ctime(&item.ctime));
+	
+	m[strlen(m) - 1] = 0;
+	a[strlen(a) - 1] = 0;
+	c[strlen(c) - 1] = 0;
+	
+    printf("%s\t", m);
+    printf("%s\t", a); 
+    printf("%s\t", c);
+    
+    printf("%li", item.size);
+    printf("\n");
 }
 
 int login_server(char *host, int port) {
@@ -197,7 +231,7 @@ int login_server(char *host, int port) {
     Packet login_packet;
     Ack ack;
     char *full_path = (char*) malloc(sizeof(char) * MAXNAME+10);
-    pthread_t daemon, syncServer;
+    pthread_t daemon, syncserver;
 
     get_sync_path(full_path, host, "");
     
@@ -229,19 +263,29 @@ int login_server(char *host, int port) {
     
     sync_client();
     
+    inotify_f = inotify_init();
     pthread_create(&daemon, NULL, sync_daemon, (void*) full_path);
+    pthread_create(&syncserver, NULL, sync_server, (void*) full_path);
     
     //Maybe should return the packet id ?
     return 0;
 }
 
+void start_watch (char* folder_path) {
+	inotify_wd = inotify_add_watch(inotify_f, folder_path, IN_MODIFY | IN_CLOSE_WRITE);
+}
+
+void stop_watch (char* folder_path) {
+	inotify_rm_watch( inotify_f, inotify_wd );
+}
+
 void* sync_daemon (void *args) {
 	
 	char *folder_path = (char *) args;
-	int f = inotify_init();
-	int wd = inotify_add_watch(f, folder_path, IN_MODIFY | IN_CLOSE_WRITE);
+	
+	start_watch(folder_path);
  
-	if (wd == -1)
+	if (inotify_wd == -1)
 		kill ("Creating watch failed.\n");
 	
 	while(true) {
@@ -250,12 +294,11 @@ void* sync_daemon (void *args) {
 		
 		char buffer [BUF_LEN];
 		
-		int length = read( f, buffer, BUF_LEN ); 
+		int length = read( inotify_f, buffer, BUF_LEN ); 
  
 		if ( length < 0 ) {
 			kill ("Read error.\n");
 		} 
-	 
 		pthread_mutex_lock(&syncing_client);
 	 
 		int i = 0;
@@ -323,12 +366,60 @@ void* sync_daemon (void *args) {
 		}
 		
 		pthread_mutex_unlock(&syncing_client);
+		printf("deslockou\n");
 	}
 	
 
 	
-	inotify_rm_watch( f, wd );
-	close( f );
+	inotify_rm_watch( inotify_f, inotify_wd );
+	close( inotify_f );
+	
+}
+
+void* sync_server (void *args) {
+	
+	char *folder_path = (char *) args;
+	
+	while (true) {
+		char buf[PACKET_SIZE];
+		Packet packet;
+		Ack ack;
+		ServerItem items[MAXFILES];
+		ServerItem cur_item;
+		int packets_received = 0;
+		int packets_to_receive;
+		
+		sleep(2);
+		pthread_mutex_lock(&syncing_client);
+		
+		create_packet(&packet, List_type, get_id(), 0, "");
+		await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+
+		packets_to_receive = ack.util;
+
+		if(packets_to_receive != 0) {
+			do {
+				receive_packet(buf, socket_id, &si_other, &slen);
+				memcpy(&packet, buf, PACKET_SIZE);
+				create_ack(&ack, packet.packet_id, packet.packet_info);
+				if(buf[0] == Data_type) {
+					memcpy(&cur_item, packet.data, sizeof(ServerItem));
+					
+					items[packets_received] = cur_item;
+					
+					packets_received++;
+				}
+				send_ack(&ack, socket_id, &si_other, slen);
+			} while(packets_received < packets_to_receive);
+		}
+		
+		printf("Syncronization complete:\n");
+		for (int i = 0; i < packets_to_receive; i++) {
+			printf("%s\n", items[i].name);
+		}
+		pthread_mutex_unlock(&syncing_client);
+	}
+	
 	
 }
 

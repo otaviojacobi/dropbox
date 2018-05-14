@@ -68,6 +68,7 @@ typedef struct server_item {
 	time_t atime;
 	time_t ctime;
 	time_t mtime;
+	long int size;
 } ServerItem;
 
 

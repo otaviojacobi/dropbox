@@ -10,10 +10,14 @@ void get_file(char *file, int local); //done
 void delete_file(char *file); //TODO
 void close_session(); //done I think ?
 void print_time(long int stat_time);
+void stop_watch (char* folder_path);
+void start_watch (char* folder_path);
 
+void* sync_server (void *args);
 void* sync_daemon (void *args);
 
 void list_server(); //done
+void print_item_info (ServerItem item);
 void list_client();
 
 uint32_t get_id();
