@@ -7,6 +7,7 @@ int inotify_wd;
 unsigned int slen;
 uint32_t next_id = 0;
 char *USER;
+char *SERVER;
 pthread_mutex_t busy_client = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t syncing_client = PTHREAD_MUTEX_INITIALIZER;
 
@@ -16,7 +17,7 @@ int main(int argc, char **argv) {
     char command_parameter[COMMAND_LENGTH];
 
     USER = argv[1];
-    char *SERVER = argc >= 3 ? argv[2] : SERVER_DEFAULT;
+    SERVER = argc >= 3 ? argv[2] : SERVER_DEFAULT;
     int PORT = argc >= 4 ? atoi(argv[3]) : DEFAULT_PORT;
     int action;
     char full_path[MAXNAME+10];
@@ -259,7 +260,7 @@ int login_server(char *host, int port) {
        kill("We failed to log you in. Try again later!\n");
     }
 
-    socket_id = init_socket_client(ack.info, SERVER_DEFAULT, &si_other);
+    socket_id = init_socket_client(ack.info, SERVER, &si_other);
     
     sync_client();
     
