@@ -18,6 +18,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <utime.h>
 
 
 #include <netinet/in.h>
@@ -49,8 +50,7 @@
 static char *SERVER_DEFAULT = "127.0.0.1";
 struct	file_info	{
     char name[MAXNAME];
-    char created[MAXNAME];
-    char last_modified[MAXNAME];
+    struct stat times;
     int size;
 };
 
@@ -61,6 +61,15 @@ typedef struct	client	{
     int logged_in;
 
 } Client;
+
+typedef struct server_item {
+	
+	char name [MAXNAME];
+	time_t atime;
+	time_t ctime;
+	time_t mtime;
+} ServerItem;
+
 
 //actions
 enum possible_actions {
@@ -120,6 +129,7 @@ void receive_file(char *file, uint32_t file_size, uint32_t packet_id, int socket
 void send_packet(Packet *packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
 void await_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
 int send_file_chunks(char *file_name, int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id, char destination);
+void include_times_on_packet (Packet *packet, char *file_name);
 void format_file_name(char *file_name);
 void get_sync_path(char *full_path, char *USER, char *file_name);
 

@@ -118,6 +118,7 @@ void sync_client() {
     char buf[PACKET_SIZE];
     Packet packet;
     Ack ack;
+    ServerItem cur_item;
     int packets_received = 0;
     int packets_to_receive;
     char file_names[MAXFILES][MAXNAME];
@@ -142,24 +143,14 @@ void sync_client() {
         receive_packet(buf, socket_id, &si_other, &slen);
         memcpy(&packet, buf, PACKET_SIZE);
         create_ack(&ack, packet.packet_id, packet.packet_info);
-        if(buf[0] == Data_type) {
-            //This is just formating a bunch of strings cause I was too lazy to think about something better
-            if(packets_received == 0) {
-                for(cur_char = 0; cur_char < strlen(packet.data); cur_char++) {
-                    if(packet.data[cur_char] == '\n') cur_split++;
-                    if(cur_split == 2) {
-                        strcpy(file_name, &packet.data[cur_char+1]);
-                        break;
-                    }
-                }
-            } else { 
-                strcpy(file_name, packet.data);
-            }
-            for(cur_char=0; file_name[cur_char] != '\t'; cur_char++) {}
-            file_name[cur_char] = '\0';
-            strcpy(file_names[packets_received], file_name);
-            packets_received++;
-        }
+        if(buf[0] != Data_type) 
+			kill("Something really wrong happened.n");
+	
+		memcpy(&cur_item, packet.data, sizeof(ServerItem));
+        strcpy(file_name, cur_item.name);
+            
+        strcpy(file_names[packets_received], file_name);
+        packets_received++;
         send_ack(&ack, socket_id, &si_other, slen);
     } while(packets_received < packets_to_receive);
     

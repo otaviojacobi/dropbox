@@ -172,9 +172,9 @@ void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int s
 
         fclose(file_opened);
 
-        if (ferror(file_opened)) {
-            kill("Error writing file\n");
-        }
+       // if (ferror(file_opened)) {
+            //kill("Error writing file\n");
+       // }
     }
 }
 
@@ -216,6 +216,7 @@ int send_file_chunks(char *file_name, int socket_id, struct sockaddr_in *si_othe
         //file header packet
         format_file_name(file_name);
         create_packet(&packet, Header_type, packet_id, file_size, file_name);
+        include_times_on_packet(&packet, file_name);
         await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
     }
     //Send all file data in block_amount packets
@@ -232,6 +233,31 @@ int send_file_chunks(char *file_name, int socket_id, struct sockaddr_in *si_othe
     fclose(file);
 
     return packet_id;
+}
+
+void include_times_on_packet (Packet *packet, char *file_name) {
+	struct stat buffer;
+	
+	struct stat test;
+	
+	printf ("joanesburgo: %s\n", file_name);
+	
+	if (stat(file_name, &buffer) == -1)
+		kill("Error on reading file metadata.");
+		
+	printf("ah não meu %d\n", sizeof(buffer));
+	
+	printf(ctime(&(buffer.st_mtime)));
+
+	int end_position = strlen(packet->data) + 1;
+
+	memcpy(packet->data + end_position, (void *) &buffer,  sizeof(buffer));
+
+	printf("jonos : %s\n", packet->data);
+	
+	memcpy(&test, packet->data + end_position,  sizeof(struct stat));
+	
+	printf(ctime(&(buffer.st_mtime)));
 }
 
 void await_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {

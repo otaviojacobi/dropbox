@@ -113,6 +113,7 @@ void* handle_user(void* args) {
     FILE *file;
     uint32_t packet_id = 0;
     int32_t file_size;
+    struct utimbuf file_times;
     int file_amount;
 
     while(true) {
@@ -142,6 +143,11 @@ void* handle_user(void* args) {
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id);
                 if(!get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info))
                     clients[socket_id].info.push_back(file_metadata);
+				
+				file_times.modtime = file_metadata.times.st_mtime;
+				file_times.actime = file_metadata.times.st_atime;
+				
+				utime(path_file, &file_times);
                 break;
 
             case Download_type:
@@ -151,6 +157,7 @@ void* handle_user(void* args) {
                 send_ack(&ack, socket_id, &si_client, slen);
                 if(file_size == -1) break;
                 fclose(file);
+                
                 packet_id = send_file_chunks(path_file, socket_id, &si_client, slen, packet_id, 'c');
                 break;
 
@@ -194,6 +201,7 @@ int get_file_amount(int socket_id) {
 int send_current_files(int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id) {
     Packet packet;
     Ack ack;
+    ServerItem cur_item;
     char buf[PACKET_SIZE];
     char serialized_info[DATA_PACKET_SIZE];
     DIR *dir;
@@ -215,7 +223,27 @@ int send_current_files(int socket_id, struct sockaddr_in *si_other, unsigned int
 
                 if(lstat(full_path, &file_stat) < 0)    
                     printf("Error: cannot stat file <%s>\n", full_path);
-                file_info_serialize(file_stat, serialized_info, file_name, i);
+                    
+                cur_item.atime = file_stat.st_atime;
+                cur_item.mtime = file_stat.st_mtime;
+                cur_item.ctime = file_stat.st_ctime;
+                strcpy(cur_item.name, file_name);
+                
+                printf("TESTE 1: \n");
+                printf(ctime(&(cur_item.atime)));
+                
+                printf("TESTE 2: \n");
+                printf(ctime(&(cur_item.mtime)));
+                
+                printf("TESTE 3: \n");
+                printf(ctime(&(cur_item.ctime)));
+                
+                printf("TESTE 4: \n");
+                printf("%s\n", cur_item.name);
+                
+                
+               // file_info_serialize(file_stat, serialized_info, file_name, i);
+                memcpy(serialized_info, &cur_item, sizeof(ServerItem));
                 create_packet(&packet, Data_type, packet_id, 0, serialized_info);
                 await_send_packet(&packet, &ack, buf, socket_id, si_other, slen);
                 i++;
@@ -331,9 +359,14 @@ uint32_t create_user_socket(int *id) {
 int get_file_metadata(struct file_info *file, char* file_name, int socket_id, int file_size) {
 
     time_t rawtime;
+    struct stat stat_buffer;
     struct tm *timeinfo;
     char buffer[80];
     int exists = false;
+    
+     int end_position = strlen(file_name) + 1;
+
+	memcpy(&(file->times), file_name + end_position,  sizeof(struct stat));
 
     time (&rawtime);
     timeinfo = localtime(&rawtime);
@@ -342,16 +375,13 @@ int get_file_metadata(struct file_info *file, char* file_name, int socket_id, in
     for (std::list<struct file_info>::iterator iterator = clients[socket_id].info.begin(), 
             end = clients[socket_id].info.end(); iterator != end; ++iterator) {
         if(strcmp((*iterator).name, file_name) == 0) {
-            strcpy((*iterator).last_modified, buffer);    
+            memcpy(&((*iterator).times), file_name + end_position,  sizeof(struct stat));   
             exists = true;
         }
     }
 
     strcpy(file->name, file_name);
     file->size = file_size;
-    strcpy(file->last_modified, buffer);
-    if(!exists)
-        strcpy(file->created, buffer);
 
     return exists;
 }
