@@ -469,6 +469,7 @@ void get_file(char *file, int local) { // 0 = local, 1 = sync_dir
         memcpy(&ack, buf, sizeof(ack));
     }
     
+    strcpy(full_path, "");
     if (local == 1)
 		get_sync_path(full_path, USER, file);
 	else {
