@@ -230,8 +230,6 @@ int send_current_files(int socket_id, struct sockaddr_in *si_other, unsigned int
                 cur_item.size = file_stat.st_size;
                 strcpy(cur_item.name, file_name);
                 
-                printf("mandoulist\n");
-                
                 
                // file_info_serialize(file_stat, serialized_info, file_name, i);
                 memcpy(serialized_info, &cur_item, sizeof(ServerItem));

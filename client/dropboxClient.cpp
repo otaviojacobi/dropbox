@@ -303,6 +303,7 @@ void* sync_daemon (void *args) {
 	 
 		int i = 0;
 		while ( i < length ) {
+			//printf("joaquim %d\n", i);
 			struct inotify_event *event = ( struct inotify_event * ) &buffer[ i ];
 			if ( event->len ) {
 				
@@ -317,8 +318,7 @@ void* sync_daemon (void *args) {
 							strcat(filepath_send, "/");
 							strcat(filepath_send, event->name);
 							send_file(filepath_send);  
-							free(filepath_send);
-							printf( "The file %s was modified\n", filepath_send);   // for txt      
+							free(filepath_send);   
 						}
 				}
 			
@@ -333,7 +333,6 @@ void* sync_daemon (void *args) {
 						strcat(filepath_send, event->name);
 						send_file(filepath_send);  
 						free(filepath_send);
-						printf( "1 The file %s was modified\n", filepath_send);   // for txt
 					}
 				}
 				else if ( event->mask & IN_MODIFY) {
@@ -347,7 +346,6 @@ void* sync_daemon (void *args) {
 							strcat(filepath_send, event->name);
 							send_file(filepath_send);  
 							free(filepath_send);
-							printf( "2 The file %s was modified\n", filepath_send);  
 						}
 					}
 				}
@@ -362,11 +360,15 @@ void* sync_daemon (void *args) {
 	//		
 				i += EVENT_SIZE + event->len;
 			}
+			else {
+				
+				break;
+				
+			}
 		
 		}
 		
 		pthread_mutex_unlock(&syncing_client);
-		printf("deslockou\n");
 	}
 	
 
@@ -388,8 +390,9 @@ void* sync_server (void *args) {
 		ServerItem cur_item;
 		int packets_received = 0;
 		int packets_to_receive;
+		int item_actions[MAXFILES];
 		
-		sleep(2);
+		sleep(10);
 		pthread_mutex_lock(&syncing_client);
 		
 		create_packet(&packet, List_type, get_id(), 0, "");
@@ -407,16 +410,38 @@ void* sync_server (void *args) {
 					
 					items[packets_received] = cur_item;
 					
+					item_actions[packets_received] = 0;
+					
 					packets_received++;
 				}
 				send_ack(&ack, socket_id, &si_other, slen);
 			} while(packets_received < packets_to_receive);
 		}
 		
-		printf("Syncronization complete:\n");
 		for (int i = 0; i < packets_to_receive; i++) {
-			printf("%s\n", items[i].name);
+			char filename [MAXNAME];
+			struct stat buffer;
+			strcpy(filename, folder_path);
+			strcat(filename, "/");
+			strcat(filename, items[i].name);
+			
+			if (stat(filename, &buffer) == -1)
+				item_actions[i] = 1;
+			else {
+				if (difftime(buffer.st_mtime, items[i].mtime) < 0) // positivo quando tá mais nova que o server
+					  item_actions[i] = 1;
+			}
 		}
+		
+		for (int i = 0; i < packets_to_receive; i++) {
+			if (item_actions[i]) {
+				stop_watch(folder_path);
+				get_file(items[i].name, 1);
+				start_watch(folder_path);
+				
+			}
+		}
+		
 		pthread_mutex_unlock(&syncing_client);
 	}
 	
@@ -425,9 +450,7 @@ void* sync_server (void *args) {
 
 void send_file(char *file) {
 	pthread_mutex_lock(&busy_client);
-	printf("upload pegou o mutex\n");
     next_id = send_file_chunks(file, socket_id, &si_other, slen, get_id(), 's');
-    printf("upload liberou o mutex\n");
 	pthread_mutex_unlock(&busy_client);
 }
 
@@ -439,7 +462,6 @@ void get_file(char *file, int local) { // 0 = local, 1 = sync_dir
     
     
 	pthread_mutex_lock(&busy_client);
-	printf("download pegou o mutex\n");
 
     create_packet(&packet, Download_type, get_id(), 0, file); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
@@ -460,7 +482,6 @@ void get_file(char *file, int local) { // 0 = local, 1 = sync_dir
     else
         printf("This file does not exists!\n");
         
-    printf("download liberou o mutex\n");
     pthread_mutex_unlock(&busy_client);
 }
 
