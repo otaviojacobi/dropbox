@@ -3,17 +3,23 @@
 int init_socket_client(int PORT, char* SERVER, struct sockaddr_in *si_other) {
 
     int socket_id;
-
+    struct hostent *server;
+    
     if ( (socket_id=socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
        kill("An error ocurred while creating the socket.\n");
 
- 
+    server = gethostbyname(SERVER);
+    if (server == NULL) {
+        fprintf(stderr,"ERROR, no such host\n");
+        exit(0);
+    }
+
     memset((char *) si_other, 0, sizeof(*si_other));
     si_other->sin_family = AF_INET;
     si_other->sin_port = htons(PORT);
      
-    if (inet_aton(SERVER , &si_other->sin_addr) == 0) 
-        kill("An error ocurred while connecting to the server.\n");
+	si_other->sin_addr = *((struct in_addr *)server->h_addr);
+	bzero(si_other->sin_zero, 8);
     
     set_socket_timeout(socket_id);
     return socket_id;
