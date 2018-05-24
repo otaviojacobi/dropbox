@@ -2,7 +2,6 @@
 
 uint32_t current_port = 8132;
 
-//char *clients[100000]; // nao seria melhor uma lista encadeada?
 std::map<int, Client> clients;
 
 int main(int argc, char **argv) {
@@ -41,6 +40,11 @@ int main(int argc, char **argv) {
             case Data_type:
                 printf("Error: not supposed to be Data_type case on main\n");
                 break;
+            
+            case Client_logout_type:
+                printf("Error: not supposed to be Client_logout_type case on main\n");
+                break;
+
 
             default: printf("The packet type is not supported! on main\n");
         }
@@ -52,6 +56,7 @@ int main(int argc, char **argv) {
 
 void receive_login_server(char *host, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen ) {
 
+    printf("User %s vai logar.\n", host);
     pthread_t logged_client;
     int status = check_login_status(host);
     int *new_socket_id = (int *) malloc (sizeof(int));
@@ -59,15 +64,19 @@ void receive_login_server(char *host, int packet_id, int socket_id, struct socka
     ack.packet_type = Ack_type;
     ack.packet_id = packet_id;
     int is_online = check_if_online(host);
+    printf("checou.\n");
     uint32_t port;
 
     if(is_online) {
-        clients[is_online].devices[1] = clients[is_online].devices[0]; // This is the server port listening for them
-        port = clients[is_online].devices[0];
+        port = clients[is_online].portListening;
+        clients[is_online].timesOnline += 1;
+
     } else {
         port = create_user_socket(new_socket_id);
         bind_user_to_server( host, *new_socket_id, port);
         pthread_create(&logged_client, NULL, handle_user, (void*) new_socket_id); // WATCH OUT : new_socket_id will be freed
+    
+    printf("criou\n");
     }
 
     switch(status) {
@@ -172,11 +181,30 @@ void* handle_user(void* args) {
             case Data_type:
                 printf("Error: not supposed to be Data_type case THREAD\n");
                 break;
+            
+            case Client_logout_type:
+                create_ack(&ack, packet.packet_id, 0);
+                send_ack(&ack, socket_id, &si_client, slen);
+                log_out(socket_id);
+                break;
 
             default: printf("The packet type is not supported!\n");
         }
         //free(path_file);
     }
+}
+
+void log_out(int socket_id) {
+    char exit_message[COMMAND_LENGTH];
+
+    clients[socket_id].timesOnline -= 1;
+    
+    if(clients[socket_id].timesOnline < 1) {
+        close(socket_id);
+        printf("All %s were disconnect.\n", clients[socket_id].user_name);
+        pthread_exit(NULL);
+    }
+    printf("One of %s was disconnect, but still have %d connected\n", clients[socket_id].user_name, clients[socket_id].timesOnline);
 }
 
 int get_file_amount(int socket_id) {
@@ -305,8 +333,8 @@ void bind_user_to_server(char *user_name, int socket_id, uint32_t port ) {
 
     Client client;
 
-    client.devices[0] = port;
-    client.devices[1] = -1;
+    client.portListening = port;
+    client.timesOnline = 1;
     strcpy(client.user_name, user_name);
     clients.insert(std::pair<int, Client>(socket_id, client));
     printf("Binded %d to %s\n", socket_id, clients[socket_id].user_name);

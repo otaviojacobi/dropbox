@@ -12,6 +12,7 @@ void close_session(); //done I think ?
 void print_time(long int stat_time);
 void stop_watch (char* folder_path);
 void start_watch (char* folder_path);
+void log_out();
 
 void* sync_server (void *args);
 void* sync_daemon (void *args);

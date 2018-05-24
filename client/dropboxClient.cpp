@@ -59,6 +59,10 @@ int main(int argc, char **argv) {
                 sync_client();       
                 break;
 
+            case Log_out:
+                log_out();
+                break;
+
             case Exit:
                 close_session();
                 break;
@@ -492,6 +496,21 @@ void close_session() {
     close(socket_id);
     sprintf(exit_message, "Goodbye %s!\n", USER);
     kill(exit_message);
+}
+
+void log_out() {
+    Packet packet;
+    Ack ack;
+    char buf[PACKET_SIZE];
+
+    create_packet(&packet, Client_logout_type, get_id(), 0, "NULL"); //sdds construtor
+    await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+
+    if((uint8_t)buf[0] != Ack_type) {
+       log_out();
+    }
+    
+    close_session();
 }
 
 uint32_t get_id() {

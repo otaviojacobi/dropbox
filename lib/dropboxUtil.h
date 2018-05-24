@@ -54,12 +54,12 @@ struct	file_info	{
     int size;
 };
 
-typedef struct	client	{
-    int devices[2];
+typedef struct	client	{ //think about mutex, especially when timesOnline attribute changes
+    int portListening;
     char user_name[MAXNAME];
     std::list<struct file_info> info;
     int logged_in;
-
+    int timesOnline;
 } Client;
 
 typedef struct server_item {
@@ -79,12 +79,14 @@ enum possible_actions {
     List_server,
     List_client,
     Get_sync_dir,
+    Log_out,
     Exit
 };
 
 //packet types
 enum packet_types {
     Client_login_type,
+    Client_logout_type,
     Download_type,
     Data_type,
     Header_type,

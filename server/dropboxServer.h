@@ -17,5 +17,6 @@ int get_file_amount(int socket_id);
 int send_current_files(int socket_id, struct sockaddr_in *si_other, unsigned int slen, int packet_id);
 int check_if_online(char *host);
 int get_file_metadata(struct file_info *file, char* file_name, int socket_id, int file_size);
+void log_out(int socket_id);
 
 #endif
