@@ -41,8 +41,8 @@ int main(int argc, char **argv) {
                 printf("Error: not supposed to be Data_type case on main\n");
                 break;
             
-            case Client_logout_type:
-                printf("Error: not supposed to be Client_logout_type case on main\n");
+            case Client_exit_type:
+                printf("Error: not supposed to be Client_exit_type case on main\n");
                 break;
 
 
@@ -182,10 +182,10 @@ void* handle_user(void* args) {
                 printf("Error: not supposed to be Data_type case THREAD\n");
                 break;
             
-            case Client_logout_type:
+            case Client_exit_type:
                 create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_client, slen);
-                log_out(socket_id);
+                log_out_and_close_session(socket_id);
                 break;
 
             default: printf("The packet type is not supported!\n");
@@ -194,7 +194,7 @@ void* handle_user(void* args) {
     }
 }
 
-void log_out(int socket_id) {
+void log_out_and_close_session(int socket_id) {
     char exit_message[COMMAND_LENGTH];
 
     clients[socket_id].timesOnline -= 1;

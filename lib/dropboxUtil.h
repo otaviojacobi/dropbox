@@ -79,14 +79,13 @@ enum possible_actions {
     List_server,
     List_client,
     Get_sync_dir,
-    Log_out,
     Exit
 };
 
 //packet types
 enum packet_types {
     Client_login_type,
-    Client_logout_type,
+    Client_exit_type,
     Download_type,
     Data_type,
     Header_type,

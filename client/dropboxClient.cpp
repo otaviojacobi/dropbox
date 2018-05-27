@@ -59,12 +59,8 @@ int main(int argc, char **argv) {
                 sync_client();       
                 break;
 
-            case Log_out:
-                log_out();
-                break;
-
             case Exit:
-                close_session();
+                log_out_and_close_session();
                 break;
 
             default: printf("%s command not found.\n", command);
@@ -263,7 +259,7 @@ int login_server(char *host, int port) {
     else {
        kill("We failed to log you in. Try again later!\n");
     }
-
+    
     socket_id = init_socket_client(ack.info, SERVER, &si_other);
     
     sync_client();
@@ -498,16 +494,16 @@ void close_session() {
     kill(exit_message);
 }
 
-void log_out() {
+void log_out_and_close_session() {
     Packet packet;
     Ack ack;
     char buf[PACKET_SIZE];
 
-    create_packet(&packet, Client_logout_type, get_id(), 0, "NULL"); //sdds construtor
+    create_packet(&packet, Client_exit_type, get_id(), 0, "NULL"); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
 
     if((uint8_t)buf[0] != Ack_type) {
-       log_out();
+       log_out_and_close_session();
     }
     
     close_session();

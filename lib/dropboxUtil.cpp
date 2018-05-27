@@ -65,9 +65,6 @@ int command_to_action(char *command) {
     if(strcmp(command, "get_sync_dir") == 0) {
         return Get_sync_dir;
     }
-    if(strcmp(command, "log_out") == 0) {
-        return Log_out;
-    }
     if(strcmp(command, "exit") == 0) {
         return Exit;
     }
