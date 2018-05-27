@@ -69,7 +69,6 @@ int command_to_action(char *command) {
         return Exit;
     }
     if(strcmp(command, "delete") == 0) {
-        printf("entrei ");
         return Delete;
     }
     return -1;

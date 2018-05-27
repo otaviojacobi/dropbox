@@ -195,8 +195,8 @@ void* handle_user(void* args) {
                 create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_client, slen);
 
-                if(remove(packet.data) != 0)  {
-                    printf("Error: unable to delete the file %s\n", packet.data);
+                if(remove(path_file) != 0)  {
+                    printf("Error: unable to delete the file %s\n", path_file);
                 }
                 break;
 
