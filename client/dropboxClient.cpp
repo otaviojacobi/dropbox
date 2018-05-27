@@ -63,6 +63,11 @@ int main(int argc, char **argv) {
                 log_out_and_close_session();
                 break;
 
+            case Delete:
+                scanf("%s", command_parameter);
+                delete_file(command_parameter);
+                break;
+
             default: printf("%s command not found.\n", command);
         }
     }
@@ -501,12 +506,18 @@ void log_out_and_close_session() {
 
     create_packet(&packet, Client_exit_type, get_id(), 0, "NULL"); //sdds construtor
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
-
-    if((uint8_t)buf[0] != Ack_type) {
-       log_out_and_close_session();
-    }
     
     close_session();
+}
+
+void delete_file(char *file) {
+    char buf[PACKET_SIZE];
+    char full_path[MAXNAME+10];
+    Packet packet;
+    Ack ack;
+
+    create_packet(&packet, Delete_type, get_id(), 0, file); //sdds construtor
+    await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);	
 }
 
 uint32_t get_id() {

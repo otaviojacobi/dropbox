@@ -13,6 +13,7 @@ void print_time(long int stat_time);
 void stop_watch (char* folder_path);
 void start_watch (char* folder_path);
 void log_out_and_close_session();
+void delete_file(char *file);
 
 void* sync_server (void *args);
 void* sync_daemon (void *args);

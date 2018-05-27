@@ -44,7 +44,10 @@ int main(int argc, char **argv) {
             case Client_exit_type:
                 printf("Error: not supposed to be Client_exit_type case on main\n");
                 break;
-
+            
+            case Delete_type:
+                printf("Error: not supposed to be Delete_type case on main\n");
+                break;
 
             default: printf("The packet type is not supported! on main\n");
         }
@@ -186,6 +189,15 @@ void* handle_user(void* args) {
                 create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_client, slen);
                 log_out_and_close_session(socket_id);
+                break;
+            
+            case Delete_type:
+                create_ack(&ack, packet.packet_id, 0);
+                send_ack(&ack, socket_id, &si_client, slen);
+
+                if(remove(packet.data) != 0)  {
+                    printf("Error: unable to delete the file %s\n", packet.data);
+                }
                 break;
 
             default: printf("The packet type is not supported!\n");

@@ -79,7 +79,8 @@ enum possible_actions {
     List_server,
     List_client,
     Get_sync_dir,
-    Exit
+    Exit,
+    Delete
 };
 
 //packet types
@@ -90,7 +91,8 @@ enum packet_types {
     Data_type,
     Header_type,
     Ack_type,
-    List_type
+    List_type,
+    Delete_type
 };
 
 enum login_types {
