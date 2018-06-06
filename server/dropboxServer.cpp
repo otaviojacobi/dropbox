@@ -4,6 +4,8 @@ uint32_t current_port = 8132;
 
 std::map<int, Client> clients;
 
+pthread_mutex_t clients_timesOnline = PTHREAD_MUTEX_INITIALIZER;
+
 int main(int argc, char **argv) {
     
     int recv_len;
@@ -59,7 +61,6 @@ int main(int argc, char **argv) {
 
 void receive_login_server(char *host, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen ) {
 
-    printf("User %s vai logar.\n", host);
     pthread_t logged_client;
     int status = check_login_status(host);
     int *new_socket_id = (int *) malloc (sizeof(int));
@@ -67,12 +68,13 @@ void receive_login_server(char *host, int packet_id, int socket_id, struct socka
     ack.packet_type = Ack_type;
     ack.packet_id = packet_id;
     int is_online = check_if_online(host);
-    printf("checou.\n");
     uint32_t port;
 
     if(is_online) {
         port = clients[is_online].portListening;
+	    pthread_mutex_lock(&clients_timesOnline);
         clients[is_online].timesOnline += 1;
+	    pthread_mutex_unlock(&clients_timesOnline);
 
     } else {
         port = create_user_socket(new_socket_id);
@@ -209,13 +211,16 @@ void* handle_user(void* args) {
 void log_out_and_close_session(int socket_id) {
     char exit_message[COMMAND_LENGTH];
 
+	pthread_mutex_lock(&clients_timesOnline);
     clients[socket_id].timesOnline -= 1;
     
     if(clients[socket_id].timesOnline < 1) {
         close(socket_id);
         printf("All %s were disconnect.\n", clients[socket_id].user_name);
+        pthread_mutex_unlock(&clients_timesOnline);
         pthread_exit(NULL);
     }
+    pthread_mutex_unlock(&clients_timesOnline);
     printf("One of %s was disconnect, but still have %d connected\n", clients[socket_id].user_name, clients[socket_id].timesOnline);
 }
 
