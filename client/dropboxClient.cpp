@@ -483,8 +483,10 @@ void get_file(char *file, int local) { // 0 = local, 1 = sync_dir
 		strcat(full_path, file);
 	}
 
-    if(ack.util >= 0)
-        receive_file(full_path, ack.util, 0, socket_id);
+    if(ack.util >= 0) {
+        std::vector<BackupServer> null;
+        receive_file(full_path, ack.util, 0, socket_id, false, null);
+    }
     else
         printf("This file does not exists!\n");
         

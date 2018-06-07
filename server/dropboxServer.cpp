@@ -123,7 +123,7 @@ void receive_login_server(Packet packet, int socket_id, struct sockaddr_in *si_o
     }
 
     packet.packet_info = port;
-    send_packet_to_backups(packet);
+    send_packet_to_backups(packet, backups);
 
     ack.info = port;
     send_ack(&ack, socket_id, si_other, slen);
@@ -197,10 +197,19 @@ void* handle_user(void* args) {
             case Header_type:
                 create_ack(&ack, packet.packet_id, packet.packet_info);
 
-                send_packet_to_backups(packet);
+    //only for test, because my server backup is on de same folder
+    char backup_path_file[MAXNAME];
+    backup_path_file[0] = '\0';
+    strcat(backup_path_file, clients[socket_id].user_name);
+    strcat(backup_path_file, "_backup/");
+    strcat(backup_path_file, packet.data);
+            strcpy(packet.data, backup_path_file); 
+                //strcpy(packet.data, path_file);  //without test 
+
+                send_packet_to_backups(packet, backups);
 
                 send_ack(&ack, socket_id, &si_client, slen);
-                receive_file(path_file, packet.packet_info, packet.packet_id, socket_id);
+                receive_file(path_file, packet.packet_info, packet.packet_id, socket_id, true, backups);
                 if(!get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info))
                     clients[socket_id].info.push_back(file_metadata);
 				
@@ -466,30 +475,6 @@ int get_file_metadata(struct file_info *file, char* file_name, int socket_id, in
     return exists;
 }
 
-void send_packet_to_backups(Packet packet) {
-    for(int i= 0; i < backups.size(); i++)
-    {
-        int port = backups[i].port;
-        char server[MAXNAME];
-        strcpy(server, backups[i].server);
-
-        struct sockaddr_in si_other;
-        Ack ack;
-        char buf[PACKET_SIZE];
-        unsigned int slen = sizeof(si_other);
-    
-        int socket_id = init_socket_client(port, server, &si_other);
-
-        await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
-        if((uint8_t)buf[0] != Ack_type) {
-            printf("Fail to send packet to backup %s:%d\n", server, port);
-        }
-        printf("Sent packet to backup %s:%d\n", server, port);  
-
-        close(socket_id);  
-    }    
-}
-
 //---------------------------------------------------------------------------------------------------------------------------
 //--------------------------------BACKUP CODE -------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------
@@ -502,6 +487,7 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
     unsigned int slen = sizeof(si_leader);
     Packet packet;
     Ack ack;
+    char path_file[MAXNAME];
     struct file_info file_metadata;
     struct utimbuf file_times;
 
@@ -520,9 +506,24 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
         //print details of the client/peer and the data received
         printf("Received packet from %s:%d\n", inet_ntoa(si_leader.sin_addr), ntohs(si_leader.sin_port));
         
+        strcpy(path_file, packet.data);
         switch(packet.packet_type) {
             case Client_login_type:
                 backup_dealing_login(packet, socket_id, &si_leader, slen);
+                break;
+            case Header_type:
+                create_ack(&ack, packet.packet_id, packet.packet_info);
+                send_ack(&ack, socket_id, &si_leader, slen);
+                receive_file(path_file, packet.packet_info, packet.packet_id, socket_id, false, backups);
+                /*
+                if(!get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info))
+                    clients[socket_id].info.push_back(file_metadata);
+				
+				file_times.modtime = file_metadata.times.st_mtime;
+				file_times.actime = file_metadata.times.st_atime;
+				
+				utime(path_file, &file_times);
+                */
                 break;
             default: printf("Not implemented yet\n");
         }
@@ -560,7 +561,10 @@ void tell_leader_that_backup_exists(int this_server_port, int leader_port, char*
 void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
  
     char *host = packet.data;
-    strcat(host,"_backup");
+
+//only for test, because my server backup is on de same folder
+strcat(host,"_backup");
+
     int packet_id = packet.packet_id;
     uint32_t port = packet.packet_info;
     int status = check_login_status(host);

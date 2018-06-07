@@ -135,7 +135,7 @@ int match_ack_packet(Ack *ack, Packet *packet) {
     return ack->packet_id == packet->packet_id;
 }
 
-void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int socket_id) {
+void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int socket_id, int send_to_backup, std::vector<BackupServer> backups) {
 
 
     FILE *file_opened = fopen(path_file, "w+");
@@ -157,22 +157,30 @@ void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int s
     if (file_opened) {
         do {
             receive_packet(buf, socket_id, &si_other, &slen);
+                printf("TO AQUI MANHE  \n");
             memcpy(&packet, buf, PACKET_SIZE);
+            if(send_to_backup) {
+                printf("mando pro backup \n");
+                send_packet_to_backups(packet, backups);
+            }
             create_ack(&ack, packet.packet_id, packet.packet_info);
             if(packets_received != block_amount) {
                 if(buf[0] == Data_type) {
+                printf("escrevendo ... \n");
                     fwrite(packet.data, 1, DATA_PACKET_SIZE, file_opened);
                     packets_received++;
                 } else if(buf[0] == Header_type) {
                     create_ack(&ack, packet_id, file_size);
                 } else kill("Unexpected packet type when receiving file");
             } else {
+                printf("escrevi o ultimo \n");
                 fwrite(packet.data, 1, file_size-((block_amount) * sizeof(buf_data)), file_opened);
                 packets_received++;
             }
             send_ack(&ack, socket_id, &si_other, slen);
         } while(packets_received <= block_amount);
 
+                printf("sai do while \n");
         fclose(file_opened);
 
        // if (ferror(file_opened)) {
@@ -292,4 +300,29 @@ void get_sync_path(char *full_path, char *USER, char *file_name) {
 		strcat(full_path, "/");
 		
     strcat(full_path, file_name);
+}
+
+
+void send_packet_to_backups(Packet packet, std::vector<BackupServer> backups) {
+    for(int i= 0; i < backups.size(); i++)
+    {
+        int port = backups[i].port;
+        char server[MAXNAME];
+        strcpy(server, backups[i].server);
+
+        struct sockaddr_in si_other;
+        Ack ack;
+        char buf[PACKET_SIZE];
+        unsigned int slen = sizeof(si_other);
+    
+        int socket_id = init_socket_client(port, server, &si_other);
+
+        await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+        if((uint8_t)buf[0] != Ack_type) {
+            printf("Fail to send packet to backup %s:%d\n", server, port);
+        }
+        printf("Sent packet to backup %s:%d\n", server, port);  
+
+        close(socket_id);  
+    }    
 }
