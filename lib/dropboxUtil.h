@@ -102,7 +102,13 @@ enum packet_types {
     List_type,
     Delete_type,
     New_Backup_Server_Type,
+    
+    // election for coordinator process
+    CheckCoord_type, // processo Pi envia para o coord, se nao receber resposta, envia ...
+    Election_type,   // ... msg "election" para todos os d+ processos com pid maior que o seu
+    Coordinator_type
 };
+
 
 enum login_types {
     Old_user,
