@@ -183,7 +183,6 @@ void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int s
 
 void send_ack(Ack *ack, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
 
-
     if (sendto(socket_id, ack, sizeof(Ack) , 0 , (struct sockaddr *) si_other, slen) == -1) {
         close(socket_id);        
         kill("Failed to send ack...\n");

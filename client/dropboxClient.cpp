@@ -18,7 +18,7 @@ int main(int argc, char **argv) {
 
     USER = argv[1];
     SERVER = argc >= 3 ? argv[2] : SERVER_DEFAULT;
-    int PORT = argc >= 4 ? atoi(argv[3]) : DEFAULT_PORT;
+    int PORT = argc >= 4 ? atoi(argv[3]) : LEADER_DEFAULT_PORT;
     int action;
     char full_path[MAXNAME+10];
     

@@ -28,6 +28,7 @@
 
 #include <map>
 #include <list>
+#include <iostream>
 
 #define PACKET_SIZE 1024
 #define PACKET_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
@@ -43,7 +44,8 @@
 #define ACK_TIME_OUT 200000
 
 #define COMMAND_LENGTH 64
-#define DEFAULT_PORT 8888
+#define LEADER_DEFAULT_PORT 8888
+#define BACKUP_DEFAULT_PORT 8890
 #define true 1
 #define false 0
 
@@ -54,13 +56,18 @@ struct	file_info	{
     int size;
 };
 
-typedef struct	client	{ //think about mutex, especially when timesOnline attribute changes
+typedef struct	client	{
     int portListening;
     char user_name[MAXNAME];
     std::list<struct file_info> info;
     int logged_in;
     int timesOnline;
 } Client;
+
+typedef struct backup_server	{
+    int port;
+    char server[MAXNAME];
+} BackupServer;
 
 typedef struct server_item {
 	
@@ -92,7 +99,8 @@ enum packet_types {
     Header_type,
     Ack_type,
     List_type,
-    Delete_type
+    Delete_type,
+    New_Backup_Server_Type,
 };
 
 enum login_types {
