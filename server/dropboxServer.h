@@ -2,10 +2,9 @@
 #define _DROPBOXSERVER_H_
 
 #include "../lib/dropboxUtil.h"
-#include "dropboxBackupServer.h"
 
 
-void receive_login_server(char *host, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen );
+void receive_login_server(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen );
 int check_login_status(char *host);
 void create_new_user(char *host);
 void bind_user_to_server(char *user_name, int socket_id, uint32_t port );
@@ -23,5 +22,11 @@ int main_leader_server(int client_port);
 int main_backup_server(int this_server_port, char* server_from_leader, int leader_port, char* server_from_backup);
 void receive_login_server(char *host, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen, char *server_ip, uint32_t server_port);
 void send_packet_to_backups(Packet packet);
+
+//--------------------------------BACKUP CODE -------------------------------------------------------------------------------
+void receive_new_backup(char *server_from_backup, int backup_port, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
+void tell_leader_that_backup_exists(int this_server_port, int leader_port, char* server_from_leader, char* server_from_backup);
+void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
+void add_client_to_backup_vector(char *user_name, uint32_t port);
 
 #endif
