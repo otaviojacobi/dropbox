@@ -1,13 +1,15 @@
-#include "dropboxServer.h"
 #include "dropboxBackupServer.h"
 
 int main_backup_server(int this_server_port, char* server_from_leader, int leader_port, char* server_from_backup) { 
     tell_leader_that_backup_exists(this_server_port, leader_port, server_from_leader, server_from_backup);
 
     int recv_len;
-    struct sockaddr_in si_other;
-    unsigned int slen = sizeof(si_other);
+    struct sockaddr_in si_leader;
+    unsigned int slen = sizeof(si_leader);
     Packet packet;
+    Ack ack;
+    struct file_info file_metadata;
+    struct utimbuf file_times;
 
     //create a UDP socket
     struct sockaddr_in si_me;
@@ -18,13 +20,18 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
     while(true) {
 
         //try to receive some data, this is a blocking call
-        if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
+        if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_leader, &slen)) == -1)
             kill("Failed to receive data...\n");
 
         //print details of the client/peer and the data received
-        printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+        printf("Received packet from %s:%d\n", inet_ntoa(si_leader.sin_addr), ntohs(si_leader.sin_port));
         
         switch(packet.packet_type) {
+            case Client_login_type:
+                printf("Client_login_type Not implemented yet\n");
+                create_ack(&ack, packet.packet_id, 0);
+                send_ack(&ack, socket_id, &si_leader, slen);
+                break;
             default: printf("Not implemented yet\n");
         }
     }

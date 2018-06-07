@@ -2,6 +2,7 @@
 #define _DROPBOXSERVER_H_
 
 #include "../lib/dropboxUtil.h"
+#include "dropboxBackupServer.h"
 
 
 void receive_login_server(char *host, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen );
@@ -21,5 +22,6 @@ void log_out_and_close_session(int socket_id);
 int main_leader_server(int client_port);
 int main_backup_server(int this_server_port, char* server_from_leader, int leader_port, char* server_from_backup);
 void receive_login_server(char *host, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen, char *server_ip, uint32_t server_port);
+void send_packet_to_backups(Packet packet);
 
 #endif

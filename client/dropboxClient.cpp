@@ -25,7 +25,7 @@ int main(int argc, char **argv) {
     slen = sizeof(si_other);
 
     socket_id = init_socket_client(PORT, SERVER, &si_other);
-    login_server(USER, PORT);
+    login_server(USER);
     print_info(USER, "1.0.0");
 
     while(true) {
@@ -231,7 +231,7 @@ void print_item_info (ServerItem item) {
     printf("\n");
 }
 
-int login_server(char *host, int port) {
+int login_server(char *host) {
 
     char buf[PACKET_SIZE];
     Packet login_packet;

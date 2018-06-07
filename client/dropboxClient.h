@@ -3,7 +3,7 @@
 
 #include "../lib/dropboxUtil.h"
 
-int login_server(char *host, int port); //done
+int login_server(char *host); //done
 void send_file(char *file); //done
 void sync_client(); //TODO
 void get_file(char *file, int local); //done

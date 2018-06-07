@@ -1,11 +1,10 @@
 #include "dropboxServer.h"
-#include "dropboxBackupServer.h"
 
 uint32_t current_port = 8132;
 uint32_t next_id = 0;
 
 std::map<int, Client> clients;
-std::list<BackupServer> backups;
+std::vector<BackupServer> backups;
 
 pthread_mutex_t clients_timesOnline = PTHREAD_MUTEX_INITIALIZER;
 
@@ -53,6 +52,7 @@ int main_leader_server(int port) {
         
         switch(packet.packet_type) {
             case Client_login_type:
+                send_packet_to_backups(packet);
                 receive_login_server(packet.data, packet.packet_id, socket_id, &si_other, slen);
                 break;
             case New_Backup_Server_Type:
@@ -191,6 +191,9 @@ void* handle_user(void* args) {
 
             case Header_type:
                 create_ack(&ack, packet.packet_id, packet.packet_info);
+
+                send_packet_to_backups(packet);
+
                 send_ack(&ack, socket_id, &si_client, slen);
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id);
                 if(!get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info))
@@ -456,4 +459,29 @@ int get_file_metadata(struct file_info *file, char* file_name, int socket_id, in
     file->size = file_size;
 
     return exists;
+}
+
+void send_packet_to_backups(Packet packet) {
+    for(int i= 0; i < backups.size(); i++)
+    {
+        int port = backups[i].port;
+        char server[MAXNAME];
+        strcpy(server, backups[i].server);
+
+        struct sockaddr_in si_other;
+        Ack ack;
+        char buf[PACKET_SIZE];
+        unsigned int slen = sizeof(si_other);
+    
+        int socket_id = init_socket_client(port, server, &si_other);
+
+        await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+        if((uint8_t)buf[0] != Ack_type) {
+            printf("Fail to send packet to backup %s:%d\n", server, port);
+        }
+        printf("Sent packet to backup %s:%d\n", server, port);  
+
+        close(socket_id);  
+    }
+    
 }
