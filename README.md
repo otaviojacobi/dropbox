@@ -3,14 +3,28 @@
 ## Using this repository
 1. Clone this repository with ```git clone https://github.com/otaviojacobi/dropbox.git```and navigate to the root directory with ```cd dropbox```.
  
- 2. In the root directory you can type ```make```to buid all dependencies. You can also use ```make server```, ```make client``` or ```make util``` for just recompiling individual parts. ```make clean```will clean all binary files.
+2. In the root directory you can type ```make```to buid all dependencies. You can also use ```make server```, ```make client``` or ```make util``` for just recompiling individual parts. ```make clean```will clean all binary files.
 
 ## Using the socket library
-1. After building everything, with one terminal go to the server folder and type: 
+1. After building everything, with one terminal go to the server folder and type:  
 ```
-./server 8080
+./server (port) 0
 ```
-This will start a server listening on your device localhost (127.0.0.1) on the port 8080. If you don't specify a port, it will listen on the default port 8888.
+Example:
+```
+./server 8080 0
+```
+This will start a leader server listening on your device localhost (127.0.0.1) on the port 8080. If you don't specify a port, it will listen on the default port 8888.
+
+1.1. If you want some sever backup, go to the server folder and type: 
+```
+./server (leader port) -1 (this backup port) (leader device)
+```
+Example:
+```
+./server 8080 -1 8000 127.0.0.1
+```
+This will start a backup server listening on your device localhost (127.0.0.1) on the port 8000. And it will tell to the leader server on port 8080 its existence, so it is going to receive all updates from the leader. So, if the leader dies, the backups make an election and choose a new leader.
 
 2. Open another terminal, go to the client folder and type:
 ```
