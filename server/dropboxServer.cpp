@@ -197,15 +197,7 @@ void* handle_user(void* args) {
             case Header_type:
                 create_ack(&ack, packet.packet_id, packet.packet_info);
 
-    //only for test, because my server backup is on de same folder
-    char backup_path_file[MAXNAME];
-    backup_path_file[0] = '\0';
-    strcat(backup_path_file, clients[socket_id].user_name);
-    strcat(backup_path_file, "_backup/");
-    strcat(backup_path_file, packet.data);
-            strcpy(packet.data, backup_path_file); 
-                //strcpy(packet.data, path_file);  //without test 
-
+                strcpy(packet.data, path_file);
                 send_packet_to_backups(packet, backups);
 
                 send_ack(&ack, socket_id, &si_client, slen);
@@ -244,12 +236,20 @@ void* handle_user(void* args) {
             
             case Client_exit_type:
                 create_ack(&ack, packet.packet_id, 0);
+
+                packet.packet_info = clients[socket_id].portListening;
+                send_packet_to_backups(packet, backups);
+
                 send_ack(&ack, socket_id, &si_client, slen);
                 log_out_and_close_session(socket_id);
                 break;
             
             case Delete_type:
                 create_ack(&ack, packet.packet_id, 0);
+
+                strcpy(packet.data, path_file);
+                send_packet_to_backups(packet, backups);
+
                 send_ack(&ack, socket_id, &si_client, slen);
 
                 if(remove(path_file) != 0)  {
@@ -515,7 +515,7 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
                 create_ack(&ack, packet.packet_id, packet.packet_info);
                 send_ack(&ack, socket_id, &si_leader, slen);
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id, false, backups);
-                /*
+
                 if(!get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info))
                     clients[socket_id].info.push_back(file_metadata);
 				
@@ -523,7 +523,22 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
 				file_times.actime = file_metadata.times.st_atime;
 				
 				utime(path_file, &file_times);
-                */
+                break;
+            
+            case Client_exit_type:
+                create_ack(&ack, packet.packet_id, 0);
+                send_ack(&ack, socket_id, &si_leader, slen);
+
+                sub_client_to_backup_vector(packet.packet_info);
+                break;
+            
+            case Delete_type:
+                create_ack(&ack, packet.packet_id, 0);
+                send_ack(&ack, socket_id, &si_leader, slen);
+
+                if(remove(path_file) != 0)  {
+                    printf("Error: unable to delete the file %s\n", path_file);
+                }
                 break;
             default: printf("Not implemented yet\n");
         }
@@ -562,9 +577,6 @@ void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_o
  
     char *host = packet.data;
 
-//only for test, because my server backup is on de same folder
-strcat(host,"_backup");
-
     int packet_id = packet.packet_id;
     uint32_t port = packet.packet_info;
     int status = check_login_status(host);
@@ -596,7 +608,9 @@ strcat(host,"_backup");
         default: printf("Failed to login.\n");
     }
     send_ack(&ack, socket_id, si_other, slen);
-    printf("User %s Logged in.\n", host);
+    std::cout << "Client "<< host <<" logged in. Backup knows " << backup_clients.size() <<" connected users\n";
+        
+    printf("User %s logged in.\n", host);
 }
 
 void add_client_to_backup_vector(char *user_name, uint32_t port) {
@@ -607,4 +621,17 @@ void add_client_to_backup_vector(char *user_name, uint32_t port) {
     client.timesOnline = 1;
     strcpy(client.user_name, user_name);
     backup_clients.push_back(client);
+}
+
+void sub_client_to_backup_vector(uint32_t port) {
+    int is_found = true;
+    std::vector<Client>::iterator it;
+    for (it = backup_clients.begin(); is_found && it != backup_clients.end(); ++it) {
+        if (it->portListening == port) {
+            it = backup_clients.erase(it);
+            --it;
+            is_found = false;
+            std::cout << "Client disconnected. Backup knows " << backup_clients.size() <<" connected users\n";
+        }
+    }
 }

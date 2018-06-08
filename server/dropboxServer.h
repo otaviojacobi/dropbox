@@ -26,5 +26,6 @@ void receive_new_backup(char *server_from_backup, int backup_port, int packet_id
 void tell_leader_that_backup_exists(int this_server_port, int leader_port, char* server_from_leader, char* server_from_backup);
 void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
 void add_client_to_backup_vector(char *user_name, uint32_t port);
+void sub_client_to_backup_vector(uint32_t port);
 
 #endif

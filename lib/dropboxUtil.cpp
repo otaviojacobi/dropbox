@@ -157,30 +157,27 @@ void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int s
     if (file_opened) {
         do {
             receive_packet(buf, socket_id, &si_other, &slen);
-                printf("TO AQUI MANHE  \n");
             memcpy(&packet, buf, PACKET_SIZE);
+
             if(send_to_backup) {
-                printf("mando pro backup \n");
                 send_packet_to_backups(packet, backups);
             }
+
             create_ack(&ack, packet.packet_id, packet.packet_info);
             if(packets_received != block_amount) {
                 if(buf[0] == Data_type) {
-                printf("escrevendo ... \n");
                     fwrite(packet.data, 1, DATA_PACKET_SIZE, file_opened);
                     packets_received++;
                 } else if(buf[0] == Header_type) {
                     create_ack(&ack, packet_id, file_size);
                 } else kill("Unexpected packet type when receiving file");
             } else {
-                printf("escrevi o ultimo \n");
                 fwrite(packet.data, 1, file_size-((block_amount) * sizeof(buf_data)), file_opened);
                 packets_received++;
             }
             send_ack(&ack, socket_id, &si_other, slen);
         } while(packets_received <= block_amount);
 
-                printf("sai do while \n");
         fclose(file_opened);
 
        // if (ferror(file_opened)) {
