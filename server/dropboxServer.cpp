@@ -35,6 +35,7 @@ int main_leader_server(int port) {
     struct sockaddr_in si_other;
     unsigned int slen = sizeof(si_other);
     Packet packet;
+    Ack ack;
 
     //create a UDP socket
     struct sockaddr_in si_me;
@@ -55,7 +56,9 @@ int main_leader_server(int port) {
             case Client_login_type:
                 receive_login_server(packet, socket_id, &si_other, slen);
                 break;
+
             case New_Backup_Server_Type:
+                send_packet_to_backups(packet, backups);
                 receive_new_backup(packet.data, packet.packet_info, packet.packet_id, socket_id, &si_other, slen);
                 break;
 
@@ -141,9 +144,32 @@ void receive_new_backup(char *server_from_backup, int backup_port, int packet_id
     strcpy(new_backup.server, server_from_backup);
     backups.push_back(new_backup);
 
-    std::cout << "New backup! Backup list size = " << backups.size() << '\n';
+    std::cout << "New backup " << server_from_backup << ":" << backup_port <<"\nBackup list size = " << backups.size() << '\n';
 
     send_ack(&ack, socket_id, si_other, slen);
+
+    send_backups_list(new_backup);
+}
+
+void send_backups_list(BackupServer backup) {
+    struct sockaddr_in si_other;
+    Ack ack;
+    Packet packet;
+    char buf[PACKET_SIZE];
+    unsigned int slen = sizeof(si_other);
+
+    int socket_id = init_socket_client(backup.port, backup.server, &si_other);
+
+    for(int i = 0; i < backups.size() - 1; i++) {
+
+        create_packet(&packet, New_Backup_Server_Type, i, backups[i].port, backups[i].server);
+        await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+        if((uint8_t)buf[0] != Ack_type) {
+            printf("Fail to send packet to backup %s:%d\n", backups[i].server, backups[i].port);
+        }
+        printf("Sent packet to backup %s:%d\n", backups[i].server, backups[i].port);  
+    }
+    close(socket_id);  
 }
 
 int check_if_online(char *host) {
@@ -511,6 +537,11 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
             case Client_login_type:
                 backup_dealing_login(packet, socket_id, &si_leader, slen);
                 break;
+
+            case New_Backup_Server_Type:
+                receive_new_backup(packet.data, packet.packet_info, packet.packet_id, socket_id, &si_leader, slen);
+                break;
+
             case Header_type:
                 create_ack(&ack, packet.packet_id, packet.packet_info);
                 send_ack(&ack, socket_id, &si_leader, slen);

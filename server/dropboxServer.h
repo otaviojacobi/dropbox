@@ -19,9 +19,10 @@ int check_if_online(char *host);
 int get_file_metadata(struct file_info *file, char* file_name, int socket_id, int file_size);
 void log_out_and_close_session(int socket_id);
 int main_leader_server(int client_port);
-int main_backup_server(int this_server_port, char* server_from_leader, int leader_port, char* server_from_backup);
+void send_backups_list(BackupServer backup);
 
 //--------------------------------BACKUP CODE -------------------------------------------------------------------------------
+int main_backup_server(int this_server_port, char* server_from_leader, int leader_port, char* server_from_backup);
 void receive_new_backup(char *server_from_backup, int backup_port, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
 void tell_leader_that_backup_exists(int this_server_port, int leader_port, char* server_from_leader, char* server_from_backup);
 void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
