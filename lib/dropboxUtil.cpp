@@ -1,6 +1,6 @@
 #include "dropboxUtil.h"
 
-int init_socket_client(int PORT, char* SERVER, struct sockaddr_in *si_other) {
+int init_socket_to_send_packets(int PORT, char* SERVER, struct sockaddr_in *si_other) {
 
     int socket_id;
     struct hostent *server;
@@ -25,7 +25,7 @@ int init_socket_client(int PORT, char* SERVER, struct sockaddr_in *si_other) {
     return socket_id;
 }
 
-int init_socket_server(int PORT, struct sockaddr_in *si_me) {
+int init_socket_to_receive_packets(int PORT, struct sockaddr_in *si_me) {
 
     int socket_id;
 
@@ -139,12 +139,8 @@ void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int s
 
 
     FILE *file_opened = fopen(path_file, "w+");
-    
     char buf[PACKET_SIZE];
-    
     char buf_data[DATA_PACKET_SIZE];
-    
-
     uint32_t block_amount = ceil(file_size/sizeof(buf_data));
     
     Ack ack;
@@ -199,7 +195,7 @@ int receive_packet(char *buffer, int socket_id, struct sockaddr_in *si_other, un
 
     //try to receive the ack, this is a blocking call
     if ((recv_len = recvfrom(socket_id, buffer, PACKET_SIZE, 0, (struct sockaddr *) si_other, slen)) == -1)
-        kill("Failed to receive ack...\n");
+        kill("Failed to receive packet...\n");
 
     return recv_len;
 }
@@ -312,7 +308,7 @@ void send_packet_to_backups(Packet packet, std::vector<BackupServer> backups) {
         char buf[PACKET_SIZE];
         unsigned int slen = sizeof(si_other);
     
-        int socket_id = init_socket_client(port, server, &si_other);
+        int socket_id = init_socket_to_send_packets(port, server, &si_other);
 
         await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
         if((uint8_t)buf[0] != Ack_type) {

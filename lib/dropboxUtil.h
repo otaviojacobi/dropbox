@@ -48,6 +48,7 @@
 #define COMMAND_LENGTH 64
 #define LEADER_DEFAULT_PORT 8888
 #define BACKUP_DEFAULT_PORT 8890
+#define FRONTEND_DEFAULT_PORT 8899
 #define true 1
 #define false 0
 
@@ -107,7 +108,8 @@ enum packet_types {
     // election for coordinator process
     CheckCoord_type, // processo Pi envia para o coord, se nao receber resposta, envia ...
     Election_type,   // ... msg "election" para todos os d+ processos com pid maior que o seu
-    Coordinator_type
+    Coordinator_type,
+    New_Leader_type
 };
 
 
@@ -131,8 +133,8 @@ typedef struct ack {
     uint32_t info;
 } Ack;
 
-int init_socket_client(int PORT, char *SERVER, struct sockaddr_in *si_other);
-int init_socket_server(int PORT, struct sockaddr_in *si_me);
+int init_socket_to_send_packets(int PORT, char *SERVER, struct sockaddr_in *si_other);
+int init_socket_to_receive_packets(int PORT, struct sockaddr_in *si_me);
 int command_to_action(char *command);
 void create_packet(Packet *packet, uint8_t type, uint32_t id, uint32_t info, char *data);
 void create_ack(Ack *ack, uint32_t id, uint32_t util);
