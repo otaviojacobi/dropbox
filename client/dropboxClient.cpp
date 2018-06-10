@@ -18,13 +18,15 @@ int main(int argc, char **argv) {
 
     USER = argv[1];
     SERVER = argc >= 3 ? argv[2] : SERVER_DEFAULT;
-    int PORT = argc >= 4 ? atoi(argv[3]) : LEADER_DEFAULT_PORT;
+    int PORT = argc >= 4 ? atoi(argv[3]) : FRONTEND_DEFAULT_PORT;
     int action;
     char full_path[MAXNAME+10];
     
     slen = sizeof(si_other);
 
-    socket_id = init_socket_client(PORT, SERVER, &si_other);
+    socket_id = init_socket_to_send_packets(PORT, SERVER, &si_other);
+    printf("received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+        
     login_server(USER);
     print_info(USER, "1.0.0");
 
@@ -264,8 +266,6 @@ int login_server(char *host) {
     else {
        kill("We failed to log you in. Try again later!\n");
     }
-    
-    socket_id = init_socket_client(ack.info, SERVER, &si_other);
     
     sync_client();
     

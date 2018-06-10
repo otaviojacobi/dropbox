@@ -39,7 +39,7 @@ int main_leader_server(int port) {
 
     //create a UDP socket
     struct sockaddr_in si_me;
-    int socket_id = init_socket_server(port, &si_me);
+    int socket_id = init_socket_to_receive_packets(port, &si_me);
 
     //keep listening for data
     printf("Listening on port %d...\n", port);
@@ -158,7 +158,7 @@ void send_backups_list(BackupServer backup) {
     char buf[PACKET_SIZE];
     unsigned int slen = sizeof(si_other);
 
-    int socket_id = init_socket_client(backup.port, backup.server, &si_other);
+    int socket_id = init_socket_to_send_packets(backup.port, backup.server, &si_other);
 
     for(int i = 0; i < backups.size() - 1; i++) {
 
@@ -224,11 +224,13 @@ void* handle_user(void* args) {
             case Header_type:
                 memcpy(packet_data, packet.data, sizeof(packet.data));
                 create_ack(&ack, packet.packet_id, packet.packet_info);
-
+                
                 strcpy(packet.data, path_file);
                 send_packet_to_backups(packet, backups);
 
+                create_ack(&ack, packet.packet_id, packet.packet_info);
                 send_ack(&ack, socket_id, &si_client, slen);
+
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id, true, backups);
                 if(!get_file_metadata(&file_metadata, packet_data, socket_id, packet.packet_info))
                     clients[socket_id].info.push_back(file_metadata);
@@ -263,21 +265,20 @@ void* handle_user(void* args) {
                 break;
             
             case Client_exit_type:
-                create_ack(&ack, packet.packet_id, 0);
-
                 packet.packet_info = clients[socket_id].portListening;
                 send_packet_to_backups(packet, backups);
 
+                create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_client, slen);
+
                 log_out_and_close_session(socket_id);
                 break;
             
             case Delete_type:
-                create_ack(&ack, packet.packet_id, 0);
-
                 strcpy(packet.data, path_file);
                 send_packet_to_backups(packet, backups);
 
+                create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_client, slen);
 
                 if(remove(path_file) != 0)  {
@@ -523,7 +524,7 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
 
     //create a UDP socket
     struct sockaddr_in si_me;
-    int socket_id = init_socket_server(this_server_port, &si_me);
+    int socket_id = init_socket_to_receive_packets(this_server_port, &si_me);
 
     //keep listening for data
     printf("Listening on port %d...\n", this_server_port);
@@ -590,7 +591,7 @@ void tell_leader_that_backup_exists(int this_server_port, int leader_port, char*
     slen = sizeof(si_other);
     int socket_id;
 
-    socket_id = init_socket_client(leader_port, server_from_leader, &si_other);
+    socket_id = init_socket_to_send_packets(leader_port, server_from_leader, &si_other);
 
     char buf[PACKET_SIZE];
     Packet packet;
@@ -623,9 +624,7 @@ void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_o
     int is_online = check_if_online(host);
 
     if(is_online) {
-	    pthread_mutex_lock(&clients_timesOnline);
         backup_clients[is_online].timesOnline += 1;
-	    pthread_mutex_unlock(&clients_timesOnline);
 
     } else {
         add_client_to_backup_vector(host, port);
