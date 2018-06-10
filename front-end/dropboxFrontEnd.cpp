@@ -41,7 +41,7 @@ int main(int argc, char **argv) {
         if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_me, &slen)) == -1)
             kill("Failed to receive data from client...\n");
 
-        printf("%d Received packet from %s:%d\n", packet.packet_type, inet_ntoa(si_me.sin_addr), ntohs(si_me.sin_port));
+        printf("Received packet from %s:%d\n", inet_ntoa(si_me.sin_addr), ntohs(si_me.sin_port));
         
         switch(packet.packet_type) {
             case Client_login_type:
@@ -69,6 +69,18 @@ int main(int argc, char **argv) {
                 
                 packets_to_receive = ceil(ack.util/sizeof(buf_data));
                 receive_packets_from_server(packets_to_receive);
+                break;
+
+            case List_type:
+                await_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
+                
+                if((uint8_t)buf[0] == Ack_type) {
+                    memcpy(&ack, buf, sizeof(ack));
+                }
+                send_ack(&ack, socket_id, &si_me, slen);
+                
+                packets_to_receive = ack.util;
+                receive_packets_from_server(packets_to_receive - 1);
                 break;
 
             default:    
@@ -109,15 +121,13 @@ void receive_packets_from_server(int total_packets) {
             case New_Leader_type://TODO: REVIEW WHEN END THE ELECTION
                 socket_id_leader = init_socket_to_send_packets(packet.packet_info, packet.data, &si_leader);
                 break;
-
+                
             default:
-            printf("mandei1\n");
                 await_send_packet(&packet, &ack, buf, socket_id, &si_client, slen);
                 
                 if((uint8_t)buf[0] == Ack_type) {
                     memcpy(&ack, buf, sizeof(ack));
                 }
-            printf("mandei2\n");
                 send_ack(&ack, socket_id_leader, &si_leader, slen); 
         }
     }
