@@ -38,8 +38,7 @@ int main_leader_server(int port) {
     Ack ack;
 
     //create a UDP socket
-    struct sockaddr_in si_me;
-    int socket_id = init_socket_to_receive_packets(port, &si_me);
+    int socket_id = init_socket_to_receive_packets(port, &si_other);
 
     //keep listening for data
     printf("Listening on port %d...\n", port);
