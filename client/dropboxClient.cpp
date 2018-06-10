@@ -267,15 +267,12 @@ int login_server(char *host) {
        kill("We failed to log you in. Try again later!\n");
     }
     
-    //socket_id = init_socket_to_send_packets(ack.info, SERVER, &si_other);
-    
-    /*
     sync_client();
     
     inotify_f = inotify_init();
     pthread_create(&daemon, NULL, sync_daemon, (void*) full_path);
     pthread_create(&syncserver, NULL, sync_server, (void*) full_path);
-    */
+    
     //Maybe should return the packet id ?
     return 0;
 }

@@ -193,6 +193,7 @@ void* handle_user(void* args) {
     struct sockaddr_in si_client;
     unsigned int slen = sizeof(si_client);
     char path_file[MAXNAME];
+    char packet_data[DATA_PACKET_SIZE];
     FILE *file;
     uint32_t packet_id = 0;
     int32_t file_size;
@@ -221,6 +222,9 @@ void* handle_user(void* args) {
                 break;
 
             case Header_type:
+                memcpy(packet_data, packet.data, sizeof(packet.data));
+                create_ack(&ack, packet.packet_id, packet.packet_info);
+                
                 strcpy(packet.data, path_file);
                 send_packet_to_backups(packet, backups);
 
@@ -228,7 +232,7 @@ void* handle_user(void* args) {
                 send_ack(&ack, socket_id, &si_client, slen);
 
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id, true, backups);
-                if(!get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info))
+                if(!get_file_metadata(&file_metadata, packet_data, socket_id, packet.packet_info))
                     clients[socket_id].info.push_back(file_metadata);
 				
 				file_times.modtime = file_metadata.times.st_mtime;
@@ -486,8 +490,10 @@ int get_file_metadata(struct file_info *file, char* file_name, int socket_id, in
     timeinfo = localtime(&rawtime);
     strftime(buffer,sizeof(buffer),"%d-%m-%Y %I:%M:%S",timeinfo);
 
+	printf("%s\n", file_name);
     for (std::list<struct file_info>::iterator iterator = clients[socket_id].info.begin(), 
             end = clients[socket_id].info.end(); iterator != end; ++iterator) {
+	printf("%saa\n", ctime(&((*iterator).times.st_mtime)));
         if(strcmp((*iterator).name, file_name) == 0) {
             memcpy(&((*iterator).times), file_name + end_position,  sizeof(struct stat));   
             exists = true;
