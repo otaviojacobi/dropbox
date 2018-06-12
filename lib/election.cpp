@@ -1,5 +1,5 @@
-
 #include "dropboxUtil.h"
+#include <sys/select.h> // http://man7.org/linux/man-pages/man2/select.2.html
 
 #define MAX_PROCESSES 10 // ??
 #define MAX_TRANSMISSION_TIME 2.5f // ??
@@ -15,6 +15,12 @@ Process* coordProcess = NULL;
 int socket_id;
 struct sockaddr_in si_other;
 unsigned int slen = sizeof(si_other);
+
+//----------------------------------------------------
+struct timeval timeout;
+timeout.tv_sec = 10;
+timeout.tv_usec = 0;
+fd_set readfds, masterfds;
 //-----------------------------------------
 
 void init_election_system() {
@@ -44,6 +50,38 @@ void send_election_message(int toPid){
 	Packet packet;
 	create_packet(&packet, Election_type, 0, myPid, ""); // id = 0 ???
 	send_packet(&packet, socket_id, &si_other, slen);
+}
+
+// http://forums.codeguru.com/showthread.php?382646-timeout-for-recvfrom()
+// http://alumni.cs.ucr.edu/~jiayu/network/lab8.htm
+int wait_for_some_packet(Packet *packet)
+{
+    FD_ZERO(&masterfds);
+    FD_SET(socket_id, &masterfds);
+    memcpy(&readfds, &masterfds, sizeof(fd_set));
+    
+    if (select(socket_id+1, &readfds, NULL, NULL, &timeout) < 0)
+    {
+        perror("on select");
+        return -1;
+    }
+    else
+    {
+        if (FD_ISSET(socket_id, &readfds))
+        {
+            // read from the socket
+            if ((recv_len = recvfrom(socket_id, packet, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen)) != -1)
+		    {
+		        printf("pkt received\n");
+		        return 1;
+		    }
+        }
+        else
+        {   
+            // the socket timedout
+			return 0;
+        }
+    }
 }
 
 
