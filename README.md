@@ -42,9 +42,9 @@ This will start the front-end for your client. It will be the bridge between the
 ```
 Example:
 ```
-./client test 127.0.0.1 8080
+./client test 127.0.0.1 8000
 ```
-This will make a client connect to the server (which is listening on 127.0.0.1) on the specified port(8080). The first parameter is just your username acording to [dropbox especification](https://moodle.inf.ufrgs.br/pluginfile.php/122129/mod_resource/content/1/INF01151-Trabalho_pt1-v2.pdf).
+This will make a client connect to the frontend (which is listening on 127.0.0.1) on the specified port(8000). The first parameter is just your username acording to [dropbox especification](https://moodle.inf.ufrgs.br/pluginfile.php/122129/mod_resource/content/1/INF01151-Trabalho_pt1-v2.pdf).
 
 Now, on the client terminal you should see a ```>> ``` sign, this indicates that you're on the dropbox main terminal. When this project is ready you  should be able to use the following commands: 
 

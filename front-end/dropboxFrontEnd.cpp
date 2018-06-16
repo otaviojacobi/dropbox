@@ -29,6 +29,8 @@ int main(int argc, char **argv) {
     //create a UDP socket
     socket_id = init_socket_to_receive_packets(my_port, &si_me);
     socket_id_leader = init_socket_to_send_packets(leader_port, leader_server, &si_leader);
+
+    set_socket_timeout(socket_id_leader);
     
     unsigned int slen = sizeof(si_me);
 
@@ -49,7 +51,7 @@ int main(int argc, char **argv) {
                 client_port = ntohs(si_me.sin_port);
                 socket_id_leader = init_socket_to_send_packets(client_port, client_server, &si_client);
 
-                await_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
+                resolve_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
                 
                 socket_id_leader = init_socket_to_send_packets(ack.info, leader_server, &si_leader);
 
@@ -60,7 +62,7 @@ int main(int argc, char **argv) {
                 break;
 
             case Download_type:
-                await_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
+                resolve_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
                 
                 if((uint8_t)buf[0] == Ack_type) {
                     memcpy(&ack, buf, sizeof(ack));
@@ -72,7 +74,7 @@ int main(int argc, char **argv) {
                 break;
 
             case List_type:
-                await_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
+                resolve_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);                
                 
                 if((uint8_t)buf[0] == Ack_type) {
                     memcpy(&ack, buf, sizeof(ack));
@@ -84,7 +86,7 @@ int main(int argc, char **argv) {
                 break;
 
             default:    
-                await_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
+                resolve_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);                
 
                 if((uint8_t)buf[0] == Ack_type) {
                     memcpy(&ack, buf, sizeof(ack));
@@ -133,3 +135,19 @@ void receive_packets_from_server(int total_packets) {
     }
 }
 
+void resolve_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
+    try {
+        await_send_packet(packet, ack, buf, socket_id, si_other, slen);
+
+    //TODO: election should be done here
+    } catch (const char *msg) {
+        printf("%s\n", msg);
+        printf("Moving connection to backup...\n");
+        close(socket_id_leader);
+        leader_port = 8081;
+        leader_server = "127.0.0.1";
+        socket_id_leader = init_socket_to_send_packets(leader_port, leader_server, &si_leader);
+        set_socket_timeout(socket_id_leader);
+        await_send_packet(packet, ack, buf, socket_id, si_other, slen);
+    }
+}

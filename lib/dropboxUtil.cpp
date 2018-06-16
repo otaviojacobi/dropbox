@@ -256,7 +256,7 @@ void include_times_on_packet (Packet *packet, char *file_name) {
 void await_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
     int recieve_status;
     int is_valid_ack = false;
-    
+    int expiration_counter = 0;
     do {
         send_packet(packet, socket_id, si_other, slen);
         recieve_status = recvfrom(socket_id, buf, PACKET_SIZE, 0, (struct sockaddr *) si_other, &slen);
@@ -264,6 +264,8 @@ void await_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struc
             memcpy(ack, buf, sizeof(Ack));
             is_valid_ack = match_ack_packet(ack, packet);
         }
+        expiration_counter++;
+        if(expiration_counter >= 35) throw "Unable to connect to server";  
     } while(!is_valid_ack);
 }
 
