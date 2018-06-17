@@ -1,11 +1,14 @@
 #include "dropboxServer.h"
+#include "election.h"
 
 uint32_t current_port = 8132;
 uint32_t next_id = 0;
 
 std::map<int, Client> clients;
-std::vector<BackupServer> backups;
 std::vector<Client> backup_clients;
+std::vector<BackupServer> backups;
+BackupServer thisBackup;
+BackupServer leaderServer;
 
 pthread_mutex_t clients_timesOnline = PTHREAD_MUTEX_INITIALIZER;
 
@@ -15,15 +18,21 @@ int main(int argc, char **argv) {
     uint32_t is_backup =  argc >= 3 ? atoi(argv[2]) : false; //set 0 to be leader
 
     if(!is_backup) {
+        // se o lider voltar, tambem inicia uma eleciao =: antigo lider vira um backup <<<<<<<<<<<<<<<<<<
         printf("I'm leader server\n");
         main_leader_server(leader_port);
     }
     else {
-        uint32_t backup_id = is_backup;
+        uint32_t backup_id = is_backup; // used for what?
         int this_server_port = argc >= 4 ? atoi(argv[3]) : BACKUP_DEFAULT_PORT;
         char *server_from_leader =  argc >= 5 ? argv[4] : SERVER_DEFAULT;
         char *server_from_backup =  argc >= 5 ? argv[4] : SERVER_DEFAULT;
         printf("I'm backup server\n");
+
+        thisBackup.id = 0; //<<<<<<<<<<<
+        thisBackup.port = this_server_port;
+        strcpy(thisBackup.server, server_from_backup);
+
         main_backup_server(this_server_port, server_from_leader, leader_port, server_from_backup);
     }    
 
@@ -60,6 +69,30 @@ int main_leader_server(int port) {
                 send_packet_to_backups(packet, backups);
                 receive_new_backup(packet.data, packet.packet_info, packet.packet_id, socket_id, &si_other, slen);
                 break;
+
+            //------------------------- ELECTION TYPE ---------------------------------------
+
+            case Check_Leader_type: // send empty ack just for say "I'm alive"
+                if(thisBackup.isLeader)
+                    ack.info = LEADER_ALIVE;
+                else
+                    ack.info = I_AM_NOT_LEADER;
+                send_ack(&ack, socket_id, &si_other, slen);
+                break;
+
+            case Election_type: // send ack "answer" with myId as data, and init my election
+                ack.info = thisBackup.id;
+                send_ack(&ack, socket_id, &si_other, slen);
+                init_election();
+                break;
+
+            case Answer_type: // handled at wait_for_answer function
+                break;
+
+            case Leader_type: 
+                receive_leader_message(packet.packet_info); // packet.info = idNewLeader
+                break;
+            //----------------------------------------------------------------------------------
 
             case Header_type:
                 printf("Error: not supposed to be Header_type case on main\n");
@@ -163,6 +196,7 @@ void send_backups_list(BackupServer backup) {
 
         create_packet(&packet, New_Backup_Server_Type, i, backups[i].port, backups[i].server);
         await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+
         if((uint8_t)buf[0] != Ack_type) {
             printf("Fail to send packet to backup %s:%d\n", backups[i].server, backups[i].port);
         }
@@ -510,6 +544,7 @@ int get_file_metadata(struct file_info *file, char* file_name, int socket_id, in
 //---------------------------------------------------------------------------------------------------------------------------
 
 int main_backup_server(int this_server_port, char* server_from_leader, int leader_port, char* server_from_backup) { 
+
     tell_leader_that_backup_exists(this_server_port, leader_port, server_from_leader, server_from_backup);
 
     int recv_len;
@@ -545,6 +580,30 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
             case New_Backup_Server_Type:
                 receive_new_backup(packet.data, packet.packet_info, packet.packet_id, socket_id, &si_leader, slen);
                 break;
+
+            //------------------------- ELECTION TYPE ---------------------------------------
+
+            case Check_Leader_type: // send empty ack just for say "I'm alive"
+                if(thisBackup.isLeader)
+                    ack.info = LEADER_ALIVE;
+                else
+                    ack.info = I_AM_NOT_LEADER;
+                send_ack(&ack, socket_id, &si_leader, slen);
+                break;
+
+            case Election_type: // send ack "answer" with myId as data, and init my election
+                ack.info = thisBackup.id;
+                send_ack(&ack, socket_id, &si_leader, slen);
+                init_election();
+                break;
+
+            case Answer_type: // handled at wait_for_answer function
+                break;
+
+            case Leader_type: 
+                receive_leader_message(packet.packet_info); // packet.info = idNewLeader
+                break;
+            //----------------------------------------------------------------------------------
 
             case Header_type:
                 create_ack(&ack, packet.packet_id, packet.packet_info);
@@ -668,3 +727,6 @@ void sub_client_to_backup_vector(uint32_t port) {
         }
     }
 }
+
+//-------------------------------------------------------------------------------------------
+

@@ -4,10 +4,11 @@ FLAGS=-lm -lpthread -Wno-write-strings
 all: util server client front-end
 
 util:
-	$(CC) -o lib/util.o -c lib/dropboxUtil.cpp $(FLAGS) 
+	$(CC) -o lib/util.o -c lib/dropboxUtil.cpp $(FLAGS)
+	$(CC) -o server/election.o -c server/election.cpp $(FLAGS)
 
 server: util
-	$(CC) server/dropboxServer.cpp lib/util.o -o server/server $(FLAGS) 
+	$(CC) server/dropboxServer.cpp lib/util.o server/election.o -o server/server $(FLAGS) 
 
 client: util
 	$(CC) client/dropboxClient.cpp lib/util.o -o client/client $(FLAGS) 

@@ -3,7 +3,6 @@
 
 #include "../lib/dropboxUtil.h"
 
-
 void receive_login_server(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen );
 int check_login_status(char *host);
 void create_new_user(char *host);

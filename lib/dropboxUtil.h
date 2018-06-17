@@ -68,6 +68,10 @@ typedef struct	client	{
 } Client;
 
 typedef struct backup_server	{
+    int id; // for election
+    bool initOwnElection;
+    bool isLeader;
+
     int port;
     char server[MAXNAME];
 } BackupServer;
@@ -106,9 +110,10 @@ enum packet_types {
     New_Backup_Server_Type,
     
     // election for coordinator process
-    CheckCoord_type, // processo Pi envia para o coord, se nao receber resposta, envia ...
+    Check_Leader_type, // processo Pi envia para o coord, se nao receber resposta, envia ...
     Election_type,   // ... msg "election" para todos os d+ processos com pid maior que o seu
-    Coordinator_type,
+    Answer_type,
+    Leader_type,
     New_Leader_type
 };
 
@@ -116,6 +121,11 @@ enum packet_types {
 enum login_types {
     Old_user,
     New_user
+};
+
+enum election_response{
+    LEADER_ALIVE = 1,
+    I_AM_NOT_LEADER
 };
 
 typedef struct packet {
@@ -132,6 +142,7 @@ typedef struct ack {
     uint32_t packet_id;
     uint32_t info;
 } Ack;
+
 
 int init_socket_to_send_packets(int PORT, char *SERVER, struct sockaddr_in *si_other);
 int init_socket_to_receive_packets(int PORT, struct sockaddr_in *si_me);
