@@ -10,6 +10,7 @@ std::vector<Client> backup_clients;
 pthread_mutex_t clients_timesOnline = PTHREAD_MUTEX_INITIALIZER;
 
 uint32_t process_value_election;
+int knew_leader_is_dead = false;
 
 int main(int argc, char **argv) {
     
@@ -61,6 +62,12 @@ int main_leader_server(int port) {
 
             case New_Backup_Server_Type:
                 receive_new_backup(packet, socket_id, &si_other, slen);
+                break;
+
+            case Is_Leader_Alive_Type:
+                ack.packet_type = Ack_type;
+                ack.packet_id = packet.packet_id;
+                send_ack(&ack, socket_id, &si_other, slen);
                 break;
 
             case Header_type:
@@ -138,21 +145,21 @@ void receive_new_backup(Packet packet, int socket_id, struct sockaddr_in *si_oth
     Ack ack;
     ack.packet_type = Ack_type;
     ack.packet_id = packet.packet_id;
-    send_ack(&ack, socket_id, si_other, slen);
+    ack.info = backups.size() + 1;
+    send_ack(&ack, socket_id, si_other, slen); //<<<put this after
 
     BackupServer new_backup;
     new_backup.port = packet.packet_info;
     new_backup.value_election = backups.size() + 1;
     strcpy(new_backup.server, packet.data);
-    backups.push_back(new_backup);
 
-    std::cout << "New backup " << new_backup.server << ":" << new_backup.port <<"\nBackup list size = " << backups.size() << '\n';
+    std::cout << "New backup " << new_backup.server << ":" << new_backup.port <<"\nBackup list size = " << backups.size()+1 << '\n';
 
-    ack.info = backups.size();
     
     packet.packet_id = new_backup.value_election;
     send_packet_to_backups(packet, backups);
 
+    backups.push_back(new_backup);
     send_backups_list(new_backup);
 }
 
@@ -515,7 +522,7 @@ int get_file_metadata(struct file_info *file, char* file_name, int socket_id, in
 //---------------------------------------------------------------------------------------------------------------------------
 //--------------------------------BACKUP CODE -------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------------------------------------
-
+int backup_sokcet_id_handle_leader;
 int main_backup_server(int this_server_port, char* server_from_leader, int leader_port, char* server_from_backup) { 
     tell_leader_that_backup_exists(this_server_port, leader_port, server_from_leader, server_from_backup);
 
@@ -532,28 +539,36 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
     char buf[PACKET_SIZE];
     Packet packet;
     Ack ack;
-    while(true) {}
-/*
+
     int leader_exist = true;
     int id = 0;
     while(leader_exist) {
+        sleep(3);
         create_packet(&packet, Is_Leader_Alive_Type, id, 0, buf); //sdds construtor
         leader_exist = try_to_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
         id++;
     }
 
-    printf("Leader is Death!!!\n");
+    if (knew_leader_is_dead) {
+        printf("Someone told me the leader is death!!!\n");
+    }
+    else {
+        knew_leader_is_dead = true;
+        printf("I discover that the leader is death!!!\n");
+        close(backup_sokcet_id_handle_leader);
+        pthread_cancel(thread_to_handle_leader);
 
-    packet.packet_id = 1;
-    packet.packet_info = process_value_election;
-    int new_leader_port = get_leader_port(packet, backups);
-*/
-    //if(new_leader_port == -1)
-
-    pthread_cancel(thread_to_handle_leader);
+        packet.packet_type = Leader_Is_Dead_Type;
+        packet.packet_id = 1;
+        printf("I will tell to the rest %d!!!\n", backups.size());
+        send_packet_to_backups(packet, backups);
+    }
+    
+    set_new_leader(this_server_port, server_from_backup);
 }
 
 void* backup_handle_leader(void *args) {
+    knew_leader_is_dead = false;
     int *my_port = (int*) args;
     int this_server_port = *my_port;
 
@@ -569,10 +584,10 @@ void* backup_handle_leader(void *args) {
     //create a UDP socket
     //struct sockaddr_in si_me;
     int socket_id = init_socket_to_receive_packets(this_server_port, &si_other);
-
+    backup_sokcet_id_handle_leader = socket_id;
     //keep listening for data
     printf("Listening on port %d...\n", this_server_port);
-    while(true) {
+    while(!knew_leader_is_dead) {
         //try to receive some data, this is a blocking call
         if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
 
@@ -619,11 +634,23 @@ void* backup_handle_leader(void *args) {
                     printf("Error: unable to delete the file %s\n", path_file);
                 }
                 break;
+            
+            case Leader_Is_Dead_Type:            
+                create_ack(&ack, packet.packet_id, 0);
+                send_ack(&ack, socket_id, &si_other, slen);
+        printf("=----------Someone told me the leader is death!!!\n");
+
+                knew_leader_is_dead = true;
+                close(socket_id);
+                
+                break;
+
             default: printf("Not implemented yet\n");
         }
     }
  
     close(socket_id);
+    return 0;
 }
 
 void tell_leader_that_backup_exists(int this_server_port, int leader_port, char* server_from_leader, char* server_from_backup) {
@@ -650,6 +677,7 @@ void tell_leader_that_backup_exists(int this_server_port, int leader_port, char*
        kill("We failed to tell leader server that this backup server exist. Try again later!\n");
     }
     process_value_election = ack.info;
+    close(socket_id);
 }
 
 void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
@@ -729,4 +757,41 @@ void add_new_backup(char *server_from_backup, int backup_port, uint32_t packet_i
     std::cout << "New backup (id= " << packet_id << ") " << server_from_backup << ":" << backup_port <<"\nBackup list size = " << backups.size() << '\n';
 
     send_ack(&ack, socket_id, si_other, slen);
+}
+
+void set_new_leader(int this_server_port, char* server_from_backup) {
+    BackupServer greater_backup = greater_backup_server();
+    if (greater_backup.value_election == process_value_election) {
+        printf("I'm the new leader!\n");
+        main_leader_server(this_server_port);
+    }
+    else {
+        printf("I am NOT the new leader!\n");
+        remove_backup_by_election_value(greater_backup.value_election);
+        main_backup_server(this_server_port, greater_backup.server, greater_backup.port, server_from_backup);
+
+    }
+}
+
+BackupServer greater_backup_server() { 
+
+    BackupServer greater;
+    greater.value_election = process_value_election;
+    for(int i= 0; i < backups.size(); i++)
+    {
+        if(greater.value_election < backups[i].value_election)
+            greater = backups[i];       
+    }   
+        printf("I am = %d and the greater is = %d!\n", process_value_election, greater.value_election);
+    return greater; 
+}
+
+void remove_backup_by_election_value(int value_election) {
+    
+    for(int i= 0; i < backups.size(); i++)
+    {
+        if(value_election == backups[i].value_election)
+            backups.erase(backups.begin() + i);       
+    }  
+
 }

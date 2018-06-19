@@ -31,6 +31,7 @@
 #include <vector>
 #include <iterator>
 #include <iostream>
+#include <algorithm>
 
 #define PACKET_SIZE 1024
 #define PACKET_HEADER_SIZE 12 //lowest value to have sizeof(struct packet) = 1024 bytes
@@ -107,8 +108,8 @@ enum packet_types {
     New_Backup_Server_Type,
 
     Is_Leader_Alive_Type,
-    
-    New_Leader_type
+    New_Leader_type,
+    Leader_Is_Dead_Type
 };
 
 
@@ -155,6 +156,6 @@ void format_file_name(char *file_name);
 void get_sync_path(char *full_path, char *USER, char *file_name);
 void send_packet_to_backups(Packet packet, std::vector<BackupServer> backups);
 int try_to_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
-int get_leader_port(Packet packet, std::vector<BackupServer> backups);
+//int get_leader_port(Packet packet, std::vector<BackupServer> backups);
 
 #endif

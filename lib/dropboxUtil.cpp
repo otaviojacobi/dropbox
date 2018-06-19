@@ -274,7 +274,7 @@ int try_to_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struc
 
     int expiration_counter = 0;
     do {
-    printf("expiration_counter %d\n", expiration_counter);
+        printf("expiration_counter %d\n", expiration_counter);
         send_packet(packet, socket_id, si_other, slen);
         recieve_status = recvfrom(socket_id, buf, PACKET_SIZE, 0, (struct sockaddr *) si_other, &slen);
         if(recieve_status >= 0 && buf[0] == Ack_type) {
@@ -283,7 +283,7 @@ int try_to_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struc
         }
         expiration_counter++;
 
-        if(expiration_counter >= 35) return false;  
+        if(expiration_counter >= 15) return false;  
     } while(!is_valid_ack);
     return true;
 }
@@ -318,6 +318,7 @@ void get_sync_path(char *full_path, char *USER, char *file_name) {
 
 
 void send_packet_to_backups(Packet packet, std::vector<BackupServer> backups) {
+        printf("number of =%d\n", backups.size());  
     for(int i= 0; i < backups.size(); i++)
     {
         int port = backups[i].port;
@@ -340,9 +341,9 @@ void send_packet_to_backups(Packet packet, std::vector<BackupServer> backups) {
         close(socket_id);  
     }    
 }
-
+/*
 int get_leader_port(Packet packet, std::vector<BackupServer> backups) {
-    int current_leader_port = -1;
+    int current_leader_port = packet.packet_info;
     for(int i= 0; i < backups.size(); i++)
     {
         int port = backups[i].port;
@@ -358,7 +359,7 @@ int get_leader_port(Packet packet, std::vector<BackupServer> backups) {
 
         await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
         if((uint8_t)buf[0] == Ack_type) {
-            if(packet.packet_info < ack.info)
+            if(current_leader_port < ack.info)
                 current_leader_port = ack.info;
         }
         printf("Sent packet to backup %s:%d\n", server, port);  
@@ -366,4 +367,4 @@ int get_leader_port(Packet packet, std::vector<BackupServer> backups) {
         close(socket_id);  
     }   
     return current_leader_port; 
-}
+}*/
