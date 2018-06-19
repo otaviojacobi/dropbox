@@ -562,7 +562,7 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
 
         packet.packet_type = Leader_Is_Dead_Type;
         packet.packet_id = 1;
-        printf("I will tell to the rest %d!!!\n", backups.size());
+        printf("I will tell to the rest %ld!!!\n", backups.size());
         send_packet_to_backups(packet, backups);
     }
     
@@ -766,13 +766,13 @@ void set_new_leader(int this_server_port, char* server_from_backup) {
     if (greater_backup.value_election == process_value_election) {
         printf("I'm the new leader!\n");
         create_all_clients_threads(this_server_port, server_from_backup);
+        backups.clear();
         main_leader_server(this_server_port);
     }
     else {
         printf("I am NOT the new leader!\n");
-        remove_backup_by_election_value(greater_backup.value_election);
+        backups.clear();
         main_backup_server(this_server_port, greater_backup.server, greater_backup.port, server_from_backup);
-
     }
 }
 
@@ -789,15 +789,6 @@ BackupServer greater_backup_server() {
     return greater; 
 }
 
-void remove_backup_by_election_value(int value_election) {
-    
-    for(int i = 0; i < backups.size(); i++)
-    {
-        if(value_election == backups[i].value_election)
-            backups.erase(backups.begin() + i);       
-    }  
-}
-
 void create_all_clients_threads(int this_server_port, char* device) {
     
     Packet packet;
@@ -808,8 +799,6 @@ void create_all_clients_threads(int this_server_port, char* device) {
     char buf[PACKET_SIZE];
 
     for(int i = 0; i < backup_clients.size(); i++) {
-printf("leader port = %d\n", this_server_port);
-printf("leader server = %s\n", device);
 
         int tentativa = init_socket_to_send_packets(9000, "127.0.0.1", &si_client); //<<<<<<<<<<<<TODO: we have to keep port and device from front end!!!
         create_packet(&packet, New_Leader_type, i, this_server_port, device);

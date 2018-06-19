@@ -318,7 +318,6 @@ void get_sync_path(char *full_path, char *USER, char *file_name) {
 
 
 void send_packet_to_backups(Packet packet, std::vector<BackupServer> backups) {
-        printf("number of =%d\n", backups.size());  
     for(int i= 0; i < backups.size(); i++)
     {
         int port = backups[i].port;
@@ -341,30 +340,3 @@ void send_packet_to_backups(Packet packet, std::vector<BackupServer> backups) {
         close(socket_id);  
     }    
 }
-/*
-int get_leader_port(Packet packet, std::vector<BackupServer> backups) {
-    int current_leader_port = packet.packet_info;
-    for(int i= 0; i < backups.size(); i++)
-    {
-        int port = backups[i].port;
-        char server[MAXNAME];
-        strcpy(server, backups[i].server);
-
-        struct sockaddr_in si_other;
-        Ack ack;
-        char buf[PACKET_SIZE];
-        unsigned int slen = sizeof(si_other);
-    
-        int socket_id = init_socket_to_send_packets(port, server, &si_other);
-
-        await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
-        if((uint8_t)buf[0] == Ack_type) {
-            if(current_leader_port < ack.info)
-                current_leader_port = ack.info;
-        }
-        printf("Sent packet to backup %s:%d\n", server, port);  
-
-        close(socket_id);  
-    }   
-    return current_leader_port; 
-}*/

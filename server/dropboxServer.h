@@ -32,7 +32,6 @@ void* backup_handle_leader(void* this_server_port);
 void add_new_backup(char *server_from_backup, int backup_port, uint32_t packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
 void set_new_leader(int this_server_port, char* server_from_backup);
 BackupServer greater_backup_server();
-void remove_backup_by_election_value(int value_election);
 void create_all_clients_threads(int this_server_port, char* device);
 
 #endif
