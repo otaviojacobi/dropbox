@@ -60,12 +60,17 @@ struct	file_info	{
     int size;
 };
 
+typedef struct client_device {
+    char device[MAXNAME];
+    int port;
+} ClientDevice;
+
 typedef struct	client	{
     int portListening;
     char user_name[MAXNAME];
     std::list<struct file_info> info;
     int logged_in;
-    int timesOnline;
+    std::vector<struct client_device> devices;
 } Client;
 
 typedef struct backup_server {

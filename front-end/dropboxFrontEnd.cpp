@@ -49,6 +49,7 @@ int main(int argc, char **argv) {
                 client_port = ntohs(si_me.sin_port);
                 socket_id_leader = init_socket_to_send_packets(client_port, client_server, &si_client);
 
+                packet.packet_info = my_port;
                 await_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
                 
                 socket_id_leader = init_socket_to_send_packets(ack.info, leader_server, &si_leader);
@@ -110,6 +111,16 @@ int main(int argc, char **argv) {
                 
 
                 break;
+
+            case Client_exit_type:    
+                packet.packet_info = my_port;
+                strcpy(packet.data, username);
+                await_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
+
+                if((uint8_t)buf[0] == Ack_type) {
+                    memcpy(&ack, buf, sizeof(ack));
+                }
+                send_ack(&ack, socket_id, &si_me, slen);
 
             default:    
                 await_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);

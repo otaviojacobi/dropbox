@@ -35,7 +35,6 @@ int main(int argc, char **argv) {
 }
 
 int main_leader_server(int port) { 
-                printf("main_leader_server\n");
     int recv_len;
     struct sockaddr_in si_other;
     unsigned int slen = sizeof(si_other);
@@ -108,15 +107,19 @@ void receive_login_server(Packet packet, int socket_id, struct sockaddr_in *si_o
     int is_online = check_if_online(host);
     uint32_t port;
 
+    ClientDevice client_device;
+    client_device.port = packet.packet_info;
+    strcpy(client_device.device, inet_ntoa(si_other->sin_addr));
+
     if(is_online) {
         port = clients[is_online].portListening;
 	    pthread_mutex_lock(&clients_timesOnline);
-        clients[is_online].timesOnline += 1;
+        clients[is_online].devices.push_back(client_device);
 	    pthread_mutex_unlock(&clients_timesOnline);
 
     } else {
         port = create_user_socket(new_socket_id);
-        bind_user_to_server(host, *new_socket_id, port);
+        bind_user_to_server(host, *new_socket_id, port, client_device);
         pthread_create(&logged_client, NULL, handle_user, (void*) new_socket_id); // WATCH OUT : new_socket_id will be freed
     }
 
@@ -133,8 +136,7 @@ void receive_login_server(Packet packet, int socket_id, struct sockaddr_in *si_o
 
         default: printf("Failed to login.\n");
     }
-
-    packet.packet_info = port;
+    
     send_packet_to_backups(packet, backups);
 
     ack.info = port;
@@ -188,7 +190,6 @@ void send_backups_list(BackupServer backup) {
 
 int check_if_online(char *host) {
     for (std::map<int,Client>::iterator it=clients.begin(); it!=clients.end(); ++it) {
-
         if(strcmp(it->second.user_name, host) == 0) {
             return it->first;
         }
@@ -197,7 +198,6 @@ int check_if_online(char *host) {
 }
 
 void* handle_user(void* args) {
-                printf("handle_user\n");
     int *point_id = (int *) args;
     int socket_id = *point_id;
     free(point_id);
@@ -280,13 +280,13 @@ void* handle_user(void* args) {
                 break;
             
             case Client_exit_type:
-                packet.packet_info = clients[socket_id].portListening;
+                strcpy(packet.data, inet_ntoa(si_client.sin_addr));
                 send_packet_to_backups(packet, backups);
 
                 create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_client, slen);
 
-                log_out_and_close_session(socket_id);
+                log_out_and_close_session(socket_id, packet, &si_client);
                 break;
             
             case Delete_type:
@@ -307,20 +307,26 @@ void* handle_user(void* args) {
     }
 }
 
-void log_out_and_close_session(int socket_id) {
+void log_out_and_close_session(int socket_id, Packet packet, struct sockaddr_in *si_other) {
     char exit_message[COMMAND_LENGTH];
 
 	pthread_mutex_lock(&clients_timesOnline);
-    clients[socket_id].timesOnline -= 1;
-    
-    if(clients[socket_id].timesOnline < 1) {
+
+    for(int i = 0; i < clients[socket_id].devices.size(); i++)
+    {
+        if(strcmp(packet.data, clients[socket_id].devices[i].device) == 0 && packet.packet_info == clients[socket_id].devices[i].port) {
+
+            clients[socket_id].devices.erase(clients[socket_id].devices.begin() + i);    
+        }   
+    }  
+    if(clients[socket_id].devices.size() < 1) {
         close(socket_id);
         printf("All %s were disconnect.\n", clients[socket_id].user_name);
         pthread_mutex_unlock(&clients_timesOnline);
         pthread_exit(NULL);
     }
     pthread_mutex_unlock(&clients_timesOnline);
-    printf("One of %s was disconnect, but still have %d connected\n", clients[socket_id].user_name, clients[socket_id].timesOnline);
+    printf("One of %s was disconnect, but still have %ld connected\n", clients[socket_id].user_name, clients[socket_id].devices.size());
 }
 
 int get_file_amount(int socket_id) {
@@ -445,13 +451,13 @@ void create_new_user(char *host) {
     mkdir(host, 0700);
 }
 
-void bind_user_to_server(char *user_name, int socket_id, uint32_t port ) {
+void bind_user_to_server(char *user_name, int socket_id, uint32_t port, ClientDevice client_device) {
 
     Client client;
 
     client.portListening = port;
-    client.timesOnline = 1;
     strcpy(client.user_name, user_name);
+    client.devices.push_back(client_device);
     clients.insert(std::pair<int, Client>(socket_id, client));
     printf("Binded %d to %s\n", socket_id, clients[socket_id].user_name);
 }
@@ -545,7 +551,7 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
     int leader_exist = true;
     int id = 0;
     while(leader_exist) {
-        sleep(3);
+        sleep(6);
         create_packet(&packet, Is_Leader_Alive_Type, id, 0, buf); //sdds construtor
         leader_exist = try_to_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
         id++;
@@ -625,7 +631,7 @@ void* backup_handle_leader(void *args) {
                 create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_other, slen);
 
-                sub_client_to_backup_vector(packet.packet_info);
+                sub_client_to_backup_vector(packet.packet_info, packet.data);
                 break;
             
             case Delete_type:
@@ -640,7 +646,6 @@ void* backup_handle_leader(void *args) {
             case Leader_Is_Dead_Type:            
                 create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_other, slen);
-        printf("=----------Someone told me the leader is death!!!\n");
 
                 knew_leader_is_dead = true;
                 close(socket_id);
@@ -684,23 +689,26 @@ void tell_leader_that_backup_exists(int this_server_port, int leader_port, char*
 
 void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
  
-    char *host = packet.data;
+    char host[MAXNAME];
+    strcpy(host, packet.data);
 
     int packet_id = packet.packet_id;
-    uint32_t port = packet.packet_info;
     int status = check_login_status(host);
     pthread_t logged_client;
     int *new_socket_id = (int *) malloc (sizeof(int));
     Ack ack;
     ack.packet_type = Ack_type;
     ack.packet_id = packet_id;
-    int is_online = check_if_online(host);
+    int is_online = backup_check_if_online(host);
+    ClientDevice client_device;
+    client_device.port = packet.packet_info;
+    strcpy(client_device.device, inet_ntoa(si_other->sin_addr));
 
     if(is_online) {
-        backup_clients[is_online].timesOnline += 1;
+        backup_clients[is_online-1].devices.push_back(client_device);
 
     } else {
-        add_client_to_backup_vector(host, port);
+        add_client_to_backup_vector(host, client_device);
     }
 
     switch(status) {
@@ -715,37 +723,48 @@ void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_o
         default: printf("Failed to login.\n");
     }
     send_ack(&ack, socket_id, si_other, slen);
-    std::cout << "Client "<< host <<" logged in. Backup knows " << backup_clients.size() <<" connected users\n";
-        
-    printf("User %s logged in.\n", host);
+    std::cout << "Client "<< host <<" logged in. So there are "<< backup_clients[is_online-1].devices.size() <<" devices of this user online.\n"
+              << "Backup knows " << backup_clients.size() <<" diff connected users.\n" ;
 }
 
-void add_client_to_backup_vector(char *user_name, uint32_t port) {
+int backup_check_if_online(char *host) {
+    for (int i = 0; i < backup_clients.size(); i++) {
+        if(strcmp(backup_clients[i].user_name, host) == 0) {
+            return i+1;
+        }
+    }
+    return 0;
+}
+
+void add_client_to_backup_vector(char *user_name, ClientDevice client_device) {
 
     Client client;
 
-    client.portListening = port;
-    client.timesOnline = 1;
+    client.portListening = 0; //not important
     strcpy(client.user_name, user_name);
+    client.devices.push_back(client_device);
     backup_clients.push_back(client);
 }
 
-void sub_client_to_backup_vector(uint32_t port) {
-    int is_found = true;
-    std::vector<Client>::iterator it;
-    for (it = backup_clients.begin(); is_found && it != backup_clients.end(); ++it) {
-        if (it->portListening == port) {
-            it = backup_clients.erase(it);
-            --it;
-            is_found = false;
-            std::cout << "Client disconnected. Backup knows " << backup_clients.size() <<" connected users\n";
-        }
+void sub_client_to_backup_vector(int client_port, char* client_device) {
+    int is_found = false;
+    for (int i = 0; i < backup_clients.size() && !is_found; i++) {
+        for(int j = 0; j < backup_clients[i].devices.size() && !is_found; j++)
+        {
+            if(strcmp(client_device, backup_clients[i].devices[j].device) == 0 && client_port == backup_clients[i].devices[j].port) {
+
+                backup_clients[i].devices.erase(backup_clients[i].devices.begin() + j); 
+                j--;
+                is_found = true;
+                std::cout << "Client "<< backup_clients[i].user_name <<" logged out. So there are "<< backup_clients[i].devices.size() <<" devices of this user online.\n"
+                        << "Backup knows " << backup_clients.size() <<" diff connected users.\n" ;
+            }      
+        } 
     }
 }
 
 void add_new_backup(char *server_from_backup, int backup_port, uint32_t packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
 
-        printf("value_election :%d\n", packet_id); 
     Ack ack;
     ack.packet_type = Ack_type;
     ack.packet_id = packet_id;
@@ -762,7 +781,7 @@ void add_new_backup(char *server_from_backup, int backup_port, uint32_t packet_i
 }
 
 void set_new_leader(int this_server_port, char* server_from_backup) {
-    BackupServer greater_backup = greater_backup_server();
+    BackupServer greater_backup = greatest_backup_server();
     if (greater_backup.value_election == process_value_election) {
         printf("I'm the new leader!\n");
         create_all_clients_threads(this_server_port, server_from_backup);
@@ -776,7 +795,7 @@ void set_new_leader(int this_server_port, char* server_from_backup) {
     }
 }
 
-BackupServer greater_backup_server() { 
+BackupServer greatest_backup_server() { 
 
     BackupServer greater;
     greater.value_election = process_value_election;
@@ -800,9 +819,11 @@ void create_all_clients_threads(int this_server_port, char* device) {
 
     for(int i = 0; i < backup_clients.size(); i++) {
 
-        int tentativa = init_socket_to_send_packets(9000, "127.0.0.1", &si_client); //<<<<<<<<<<<<TODO: we have to keep port and device from front end!!!
-        create_packet(&packet, New_Leader_type, i, this_server_port, device);
-        await_send_packet(&packet, &ack, buf, tentativa, &si_client, slen);
+        for(int j = 0; j < backup_clients[i].devices.size(); j++) {
+            int client_device_socket_id = init_socket_to_send_packets(backup_clients[i].devices[j].port, backup_clients[i].devices[j].device, &si_client);
+            create_packet(&packet, New_Leader_type, i, this_server_port, device);
+            await_send_packet(&packet, &ack, buf, client_device_socket_id, &si_client, slen);
+        }
     }
 
 }
