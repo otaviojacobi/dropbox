@@ -67,7 +67,8 @@ typedef struct	client	{
     int timesOnline;
 } Client;
 
-typedef struct backup_server	{
+typedef struct backup_server {
+    uint32_t value_election;
     int port;
     char server[MAXNAME];
 } BackupServer;
@@ -104,11 +105,9 @@ enum packet_types {
     List_type,
     Delete_type,
     New_Backup_Server_Type,
+
+    Is_Leader_Alive_Type,
     
-    // election for coordinator process
-    CheckCoord_type, // processo Pi envia para o coord, se nao receber resposta, envia ...
-    Election_type,   // ... msg "election" para todos os d+ processos com pid maior que o seu
-    Coordinator_type,
     New_Leader_type
 };
 
@@ -155,5 +154,7 @@ void include_times_on_packet (Packet *packet, char *file_name);
 void format_file_name(char *file_name);
 void get_sync_path(char *full_path, char *USER, char *file_name);
 void send_packet_to_backups(Packet packet, std::vector<BackupServer> backups);
+int try_to_send_packet(Packet *packet, Ack *ack, char *buf, int socket_id, struct sockaddr_in *si_other, unsigned int slen);
+int get_leader_port(Packet packet, std::vector<BackupServer> backups);
 
 #endif

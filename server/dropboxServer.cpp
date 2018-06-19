@@ -9,6 +9,8 @@ std::vector<Client> backup_clients;
 
 pthread_mutex_t clients_timesOnline = PTHREAD_MUTEX_INITIALIZER;
 
+uint32_t process_value_election;
+
 int main(int argc, char **argv) {
     
     int leader_port = argc >= 2 ? atoi(argv[1]) : LEADER_DEFAULT_PORT; 
@@ -16,6 +18,7 @@ int main(int argc, char **argv) {
 
     if(!is_backup) {
         printf("I'm leader server\n");
+        process_value_election = 0;
         main_leader_server(leader_port);
     }
     else {
@@ -57,8 +60,7 @@ int main_leader_server(int port) {
                 break;
 
             case New_Backup_Server_Type:
-                send_packet_to_backups(packet, backups);
-                receive_new_backup(packet.data, packet.packet_info, packet.packet_id, socket_id, &si_other, slen);
+                receive_new_backup(packet, socket_id, &si_other, slen);
                 break;
 
             case Header_type:
@@ -132,20 +134,24 @@ void receive_login_server(Packet packet, int socket_id, struct sockaddr_in *si_o
     printf("User %s Logged in.\n", host);
 }
 
-void receive_new_backup(char *server_from_backup, int backup_port, int packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
-
+void receive_new_backup(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
     Ack ack;
     ack.packet_type = Ack_type;
-    ack.packet_id = packet_id;
+    ack.packet_id = packet.packet_id;
+    send_ack(&ack, socket_id, si_other, slen);
 
     BackupServer new_backup;
-    new_backup.port = backup_port;
-    strcpy(new_backup.server, server_from_backup);
+    new_backup.port = packet.packet_info;
+    new_backup.value_election = backups.size() + 1;
+    strcpy(new_backup.server, packet.data);
     backups.push_back(new_backup);
 
-    std::cout << "New backup " << server_from_backup << ":" << backup_port <<"\nBackup list size = " << backups.size() << '\n';
+    std::cout << "New backup " << new_backup.server << ":" << new_backup.port <<"\nBackup list size = " << backups.size() << '\n';
 
-    send_ack(&ack, socket_id, si_other, slen);
+    ack.info = backups.size();
+    
+    packet.packet_id = new_backup.value_election;
+    send_packet_to_backups(packet, backups);
 
     send_backups_list(new_backup);
 }
@@ -161,7 +167,8 @@ void send_backups_list(BackupServer backup) {
 
     for(int i = 0; i < backups.size() - 1; i++) {
 
-        create_packet(&packet, New_Backup_Server_Type, i, backups[i].port, backups[i].server);
+        printf("value_election :%d\n", backups[i].value_election); 
+        create_packet(&packet, New_Backup_Server_Type, backups[i].value_election, backups[i].port, backups[i].server);
         await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
         if((uint8_t)buf[0] != Ack_type) {
             printf("Fail to send packet to backup %s:%d\n", backups[i].server, backups[i].port);
@@ -512,9 +519,47 @@ int get_file_metadata(struct file_info *file, char* file_name, int socket_id, in
 int main_backup_server(int this_server_port, char* server_from_leader, int leader_port, char* server_from_backup) { 
     tell_leader_that_backup_exists(this_server_port, leader_port, server_from_leader, server_from_backup);
 
+    pthread_t thread_to_handle_leader;
+    pthread_create(&thread_to_handle_leader, NULL, backup_handle_leader, (void*) &this_server_port);
+
+    struct sockaddr_in si_other;
+    unsigned int slen;    
+    slen = sizeof(si_other);
+    int socket_id;
+
+    socket_id = init_socket_to_send_packets(leader_port, server_from_leader, &si_other);
+
+    char buf[PACKET_SIZE];
+    Packet packet;
+    Ack ack;
+    while(true) {}
+/*
+    int leader_exist = true;
+    int id = 0;
+    while(leader_exist) {
+        create_packet(&packet, Is_Leader_Alive_Type, id, 0, buf); //sdds construtor
+        leader_exist = try_to_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
+        id++;
+    }
+
+    printf("Leader is Death!!!\n");
+
+    packet.packet_id = 1;
+    packet.packet_info = process_value_election;
+    int new_leader_port = get_leader_port(packet, backups);
+*/
+    //if(new_leader_port == -1)
+
+    pthread_cancel(thread_to_handle_leader);
+}
+
+void* backup_handle_leader(void *args) {
+    int *my_port = (int*) args;
+    int this_server_port = *my_port;
+
     int recv_len;
-    struct sockaddr_in si_leader;
-    unsigned int slen = sizeof(si_leader);
+    struct sockaddr_in si_other;
+    unsigned int slen = sizeof(si_other);
     Packet packet;
     Ack ack;
     char path_file[MAXNAME];
@@ -522,33 +567,32 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
     struct utimbuf file_times;
 
     //create a UDP socket
-    struct sockaddr_in si_me;
-    int socket_id = init_socket_to_receive_packets(this_server_port, &si_me);
+    //struct sockaddr_in si_me;
+    int socket_id = init_socket_to_receive_packets(this_server_port, &si_other);
 
     //keep listening for data
     printf("Listening on port %d...\n", this_server_port);
     while(true) {
-
         //try to receive some data, this is a blocking call
-        if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_leader, &slen)) == -1)
-            kill("Failed to receive data...\n");
+        if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_other, &slen)) == -1)
 
         //print details of the client/peer and the data received
-        printf("Received packet from %s:%d\n", inet_ntoa(si_leader.sin_addr), ntohs(si_leader.sin_port));
+        printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
+
         
         strcpy(path_file, packet.data);
         switch(packet.packet_type) {
             case Client_login_type:
-                backup_dealing_login(packet, socket_id, &si_leader, slen);
+                backup_dealing_login(packet, socket_id, &si_other, slen);
                 break;
 
             case New_Backup_Server_Type:
-                receive_new_backup(packet.data, packet.packet_info, packet.packet_id, socket_id, &si_leader, slen);
+                add_new_backup(packet.data, packet.packet_info, packet.packet_id, socket_id, &si_other, slen);
                 break;
 
             case Header_type:
                 create_ack(&ack, packet.packet_id, packet.packet_info);
-                send_ack(&ack, socket_id, &si_leader, slen);
+                send_ack(&ack, socket_id, &si_other, slen);
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id, false, backups);
 
                 if(!get_file_metadata(&file_metadata, packet.data, socket_id, packet.packet_info))
@@ -562,14 +606,14 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
             
             case Client_exit_type:
                 create_ack(&ack, packet.packet_id, 0);
-                send_ack(&ack, socket_id, &si_leader, slen);
+                send_ack(&ack, socket_id, &si_other, slen);
 
                 sub_client_to_backup_vector(packet.packet_info);
                 break;
             
             case Delete_type:
                 create_ack(&ack, packet.packet_id, 0);
-                send_ack(&ack, socket_id, &si_leader, slen);
+                send_ack(&ack, socket_id, &si_other, slen);
 
                 if(remove(path_file) != 0)  {
                     printf("Error: unable to delete the file %s\n", path_file);
@@ -580,7 +624,6 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
     }
  
     close(socket_id);
-    return 0;
 }
 
 void tell_leader_that_backup_exists(int this_server_port, int leader_port, char* server_from_leader, char* server_from_backup) {
@@ -601,11 +644,12 @@ void tell_leader_that_backup_exists(int this_server_port, int leader_port, char*
     await_send_packet(&packet, &ack, buf, socket_id, &si_other, slen);
 
     if((uint8_t)buf[0] == Ack_type) {
-        printf("The leader server knows that this server exist.\n");
+        printf("The leader server knows that this server exist. My id is %d\n", ack.info);
     }
     else {
        kill("We failed to tell leader server that this backup server exist. Try again later!\n");
     }
+    process_value_election = ack.info;
 }
 
 void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
@@ -667,4 +711,22 @@ void sub_client_to_backup_vector(uint32_t port) {
             std::cout << "Client disconnected. Backup knows " << backup_clients.size() <<" connected users\n";
         }
     }
+}
+
+void add_new_backup(char *server_from_backup, int backup_port, uint32_t packet_id, int socket_id, struct sockaddr_in *si_other, unsigned int slen) {
+
+        printf("value_election :%d\n", packet_id); 
+    Ack ack;
+    ack.packet_type = Ack_type;
+    ack.packet_id = packet_id;
+
+    BackupServer new_backup;
+    new_backup.port = backup_port;
+    new_backup.value_election = packet_id; //<<<<<<<this is the diff between func
+    strcpy(new_backup.server, server_from_backup);
+    backups.push_back(new_backup);
+
+    std::cout << "New backup (id= " << packet_id << ") " << server_from_backup << ":" << backup_port <<"\nBackup list size = " << backups.size() << '\n';
+
+    send_ack(&ack, socket_id, si_other, slen);
 }

@@ -32,8 +32,6 @@ int main(int argc, char **argv) {
     
     unsigned int slen = sizeof(si_me);
 
-    pthread_t thread_to_receive_packets;
-
     printf("I'm frontend\n");
     printf("Listening on port %d...\n", my_port);
     while(true) {
