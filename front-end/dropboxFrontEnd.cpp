@@ -12,6 +12,7 @@ int leader_port;
 struct sockaddr_in si_client;
 int client_port;
 char client_server[MAXNAME];
+char username[MAXNAME];
 
 int main(int argc, char **argv) {
     
@@ -44,6 +45,7 @@ int main(int argc, char **argv) {
         switch(packet.packet_type) {
             case Client_login_type:
                 strcpy(client_server, inet_ntoa(si_me.sin_addr));
+                memcpy(username, packet.data, DATA_PACKET_SIZE);
                 client_port = ntohs(si_me.sin_port);
                 socket_id_leader = init_socket_to_send_packets(client_port, client_server, &si_client);
 
@@ -85,10 +87,28 @@ int main(int argc, char **argv) {
                 
                 create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_me, slen);  
-                
-                socket_id_leader = init_socket_to_send_packets(packet.packet_info, packet.data, &si_me);
+
                 leader_port = packet.packet_info;
-                strcpy(leader_server, packet.data);
+                memcpy(leader_server, packet.data, DATA_PACKET_SIZE);
+
+                socket_id_leader = init_socket_to_send_packets(leader_port, leader_server, &si_leader);
+
+                //send packet login
+                //duplicated code :(
+                strcpy(packet.data, username);
+                packet.packet_info = my_port;
+                packet.packet_type = Client_login_type;
+                
+                await_send_packet(&packet, &ack, buf, socket_id_leader, &si_leader, slen);
+                
+                socket_id_leader = init_socket_to_send_packets(ack.info, leader_server, &si_leader);
+
+                if((uint8_t)buf[0] == Ack_type) {
+                    memcpy(&ack, buf, sizeof(ack));
+                }
+                send_ack(&ack, socket_id, &si_me, slen); 
+                
+
                 break;
 
             default:    
