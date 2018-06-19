@@ -33,5 +33,6 @@ void add_new_backup(char *server_from_backup, int backup_port, uint32_t packet_i
 void set_new_leader(int this_server_port, char* server_from_backup);
 BackupServer greater_backup_server();
 void remove_backup_by_election_value(int value_election);
+void create_all_clients_threads(char* device);
 
 #endif

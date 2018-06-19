@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
         if ((recv_len = recvfrom(socket_id, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_me, &slen)) == -1)
             kill("Failed to receive data from client...\n");
 
-        printf("Received packet from %s:%d\n", inet_ntoa(si_me.sin_addr), ntohs(si_me.sin_port));
+        printf("%d Received packet from %s:%d\n", packet.packet_type, inet_ntoa(si_me.sin_addr), ntohs(si_me.sin_port));
         
         switch(packet.packet_type) {
             case Client_login_type:
@@ -79,6 +79,16 @@ int main(int argc, char **argv) {
                 
                 packets_to_receive = ack.util;
                 receive_packets_from_server(packets_to_receive - 1);
+                break;       
+
+            case New_Leader_type:
+                
+                create_ack(&ack, packet.packet_id, 0);
+                send_ack(&ack, socket_id, &si_me, slen);  
+                
+                socket_id_leader = init_socket_to_send_packets(packet.packet_info, packet.data, &si_me);
+                leader_port = packet.packet_info;
+                strcpy(leader_server, packet.data);
                 break;
 
             default:    
@@ -114,20 +124,13 @@ void receive_packets_from_server(int total_packets) {
         packets_received++;
 
         printf("Received packet from %s:%d\n", inet_ntoa(si_leader.sin_addr), ntohs(si_leader.sin_port));
+ 
+        await_send_packet(&packet, &ack, buf, socket_id, &si_client, slen);
         
-        switch(packet.packet_type) {            
-            case New_Leader_type://TODO: REVIEW WHEN END THE ELECTION
-                socket_id_leader = init_socket_to_send_packets(packet.packet_info, packet.data, &si_leader);
-                break;
-                
-            default:
-                await_send_packet(&packet, &ack, buf, socket_id, &si_client, slen);
-                
-                if((uint8_t)buf[0] == Ack_type) {
-                    memcpy(&ack, buf, sizeof(ack));
-                }
-                send_ack(&ack, socket_id_leader, &si_leader, slen); 
+        if((uint8_t)buf[0] == Ack_type) {
+            memcpy(&ack, buf, sizeof(ack));
         }
+        send_ack(&ack, socket_id_leader, &si_leader, slen); 
     }
 }
 

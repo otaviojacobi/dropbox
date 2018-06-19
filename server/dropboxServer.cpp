@@ -35,6 +35,7 @@ int main(int argc, char **argv) {
 }
 
 int main_leader_server(int port) { 
+                printf("main_leader_server\n");
     int recv_len;
     struct sockaddr_in si_other;
     unsigned int slen = sizeof(si_other);
@@ -196,6 +197,7 @@ int check_if_online(char *host) {
 }
 
 void* handle_user(void* args) {
+                printf("handle_user\n");
     int *point_id = (int *) args;
     int socket_id = *point_id;
     free(point_id);
@@ -763,6 +765,7 @@ void set_new_leader(int this_server_port, char* server_from_backup) {
     BackupServer greater_backup = greater_backup_server();
     if (greater_backup.value_election == process_value_election) {
         printf("I'm the new leader!\n");
+        create_all_clients_threads(server_from_backup);
         main_leader_server(this_server_port);
     }
     else {
@@ -777,7 +780,7 @@ BackupServer greater_backup_server() {
 
     BackupServer greater;
     greater.value_election = process_value_election;
-    for(int i= 0; i < backups.size(); i++)
+    for(int i = 0; i < backups.size(); i++)
     {
         if(greater.value_election < backups[i].value_election)
             greater = backups[i];       
@@ -788,10 +791,35 @@ BackupServer greater_backup_server() {
 
 void remove_backup_by_election_value(int value_election) {
     
-    for(int i= 0; i < backups.size(); i++)
+    for(int i = 0; i < backups.size(); i++)
     {
         if(value_election == backups[i].value_election)
             backups.erase(backups.begin() + i);       
     }  
+}
+
+void create_all_clients_threads(char* device) {
+    
+    int port;
+    Packet packet;
+    Ack ack;
+    struct file_info file_metadata;
+    struct sockaddr_in si_client;
+    unsigned int slen = sizeof(si_client);
+    char buf[PACKET_SIZE];
+
+    for(int i = 0; i < backup_clients.size(); i++) {
+        pthread_t logged_client;
+        int *new_socket_id = (int *) malloc (sizeof(int));
+        port = create_user_socket(new_socket_id);
+        backup_clients[i].portListening = port;
+        clients.insert(std::pair<int, Client>(*new_socket_id, backup_clients[i]));
+
+        int tentativa = init_socket_to_send_packets(9000, "127.0.0.1", &si_client); //<<<<<<<<<<<<TODO: we have to keep port and device from front end!!!
+        create_packet(&packet, New_Leader_type, i, port, device);
+        await_send_packet(&packet, &ack, buf, tentativa, &si_client, slen);
+
+        pthread_create(&logged_client, NULL, handle_user, (void*) new_socket_id);
+    }
 
 }
