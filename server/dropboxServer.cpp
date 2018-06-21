@@ -154,7 +154,7 @@ void receive_new_backup(Packet packet, int socket_id, struct sockaddr_in *si_oth
     BackupServer new_backup;
     new_backup.port = packet.packet_info;
     new_backup.value_election = backups.size() + 1;
-    strcpy(new_backup.server, packet.data);
+    strcpy(new_backup.server, inet_ntoa(si_other->sin_addr));
 
     std::cout << "New backup " << new_backup.server << ":" << new_backup.port <<"\nBackup list size = " << backups.size()+1 << '\n';
 
