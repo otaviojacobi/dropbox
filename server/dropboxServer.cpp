@@ -326,7 +326,7 @@ void log_out_and_close_session(int socket_id, Packet packet, struct sockaddr_in 
         pthread_exit(NULL);
     }
     pthread_mutex_unlock(&clients_timesOnline);
-    printf("One of %s was disconnect, but still have %ld connected\n", clients[socket_id].user_name, clients[socket_id].devices.size());
+    printf("One of %s was disconnect, but still have %ud connected\n", clients[socket_id].user_name, clients[socket_id].devices.size());
 }
 
 int get_file_amount(int socket_id) {
@@ -568,7 +568,7 @@ int main_backup_server(int this_server_port, char* server_from_leader, int leade
 
         packet.packet_type = Leader_Is_Dead_Type;
         packet.packet_id = 1;
-        printf("I will tell to the rest %ld!!!\n", backups.size());
+        printf("I will tell to the rest %ud!!!\n", backups.size());
         send_packet_to_backups(packet, backups);
     }
     
