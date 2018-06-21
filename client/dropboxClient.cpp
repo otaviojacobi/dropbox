@@ -67,6 +67,11 @@ int main(int argc, char **argv) {
 
             case Delete:
                 scanf("%s", command_parameter);
+                get_sync_path(full_path, USER, command_parameter);
+				if (remove(full_path) != 0) {
+					printf("Error removing file.");
+					break;
+				}
                 delete_file(command_parameter);
                 break;
 
@@ -278,7 +283,7 @@ int login_server(char *host) {
 }
 
 void start_watch (char* folder_path) {
-	inotify_wd = inotify_add_watch(inotify_f, folder_path, IN_MODIFY | IN_CLOSE_WRITE | IN_MOVED_TO | IN_CREATE);
+	inotify_wd = inotify_add_watch(inotify_f, folder_path, IN_MODIFY | IN_CLOSE_WRITE | IN_MOVED_TO | IN_MOVED_FROM | IN_DELETE | IN_CREATE);
 }
 
 void stop_watch (char* folder_path) {
@@ -313,7 +318,7 @@ void* sync_daemon (void *args) {
 			if ( event->len ) {
 				
 			
-				if ( event->mask && (IN_CREATE || IN_MOVED_TO)) {
+				if ( event->mask & (IN_CREATE | IN_MOVED_TO)) {
 					if (event->mask & IN_ISDIR)
 						printf( "The directory %s was Created.\n", event->name );      
 					else
@@ -354,15 +359,15 @@ void* sync_daemon (void *args) {
 						}
 					}
 				}
-	//		   
-	//			if ( event->mask & IN_DELETE) {
-	//				if (event->mask & IN_ISDIR)
-	//					printf( "The directory %s was deleted.\n", event->name );      
-	//				else
-	//					printf( "The file %s was deleted with WD %d\n", event->name, event->wd );      
-	//			} 
+			   
+				if ( event->mask & (IN_DELETE | IN_MOVED_FROM)) {
+					if (event->mask & IN_ISDIR)
+						printf( "The directory %s was deleted.\n", event->name );      
+					else
+						delete_file(event->name);    
+				} 
 			
-	//		
+			
 				i += EVENT_SIZE + event->len;
 			}
 			else {
