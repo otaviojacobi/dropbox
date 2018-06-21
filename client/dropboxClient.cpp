@@ -155,7 +155,10 @@ void sync_client() {
 
 
     do {
-        receive_packet(buf, socket_id, &si_other, &slen);
+        if (receive_packet(buf, socket_id, &si_other, &slen) == -1) {
+			printf("Sync client failed.\n");
+			return;
+		}
         memcpy(&packet, buf, PACKET_SIZE);
         create_ack(&ack, packet.packet_id, packet.packet_info);
         if(buf[0] != Data_type) 
@@ -170,7 +173,10 @@ void sync_client() {
     } while(packets_received < packets_to_receive);
     
     for(cur_file = 0; cur_file < packets_received; cur_file++) {
-        get_file(file_names[cur_file], 1);
+        if (get_file(file_names[cur_file], 1) == -1) {
+			printf("Sync client failed.\n");
+			return;
+		}
     }
     
     pthread_mutex_unlock(&syncing_client);
@@ -198,7 +204,8 @@ void list_server(void) {
     printf("--------------------------------------------------------------------------------------------------------------------------------\n");
     
     do {
-        receive_packet(buf, socket_id, &si_other, &slen);
+        if (receive_packet(buf, socket_id, &si_other, &slen) == -1)
+			{ printf("List server failed. Try again later.\n"); return;}
         memcpy(&packet, buf, PACKET_SIZE);
         create_ack(&ack, packet.packet_id, packet.packet_info);
         if(buf[0] == Data_type) {
@@ -276,7 +283,7 @@ int login_server(char *host) {
     
     inotify_f = inotify_init();
     pthread_create(&daemon, NULL, sync_daemon, (void*) full_path);
-    //pthread_create(&syncserver, NULL, sync_server, (void*) full_path);
+    pthread_create(&syncserver, NULL, sync_server, (void*) full_path);
     
     //Maybe should return the packet id ?
     return 0;
@@ -401,6 +408,7 @@ void* sync_server (void *args) {
 		int packets_received = 0;
 		int packets_to_receive;
 		int item_actions[MAXFILES];
+		int dirty = 0;
 		
 		sleep(10);
 		pthread_mutex_lock(&syncing_client);
@@ -412,7 +420,11 @@ void* sync_server (void *args) {
 
 		if(packets_to_receive != 0) {
 			do {
-				receive_packet(buf, socket_id, &si_other, &slen);
+				if (receive_packet(buf, socket_id, &si_other, &slen) == -1) {
+					printf("Sync server failed.\n");
+					dirty = 1;
+					break;
+				}
 				memcpy(&packet, buf, PACKET_SIZE);
 				create_ack(&ack, packet.packet_id, packet.packet_info);
 				if(buf[0] == Data_type) {
@@ -427,31 +439,35 @@ void* sync_server (void *args) {
 				send_ack(&ack, socket_id, &si_other, slen);
 			} while(packets_received < packets_to_receive);
 		}
-		
-		for (int i = 0; i < packets_to_receive; i++) {
-			char filename [MAXNAME];
-			struct stat buffer;
-			strcpy(filename, folder_path);
-			strcat(filename, "/");
-			strcat(filename, items[i].name);
-			
-			if (stat(filename, &buffer) == -1)
-				item_actions[i] = 1;
-			else {
-				if (difftime(buffer.st_mtime, items[i].mtime) < 0) // positivo quando tá mais nova que o server
-					  item_actions[i] = 1;
-			}
-		}
-		
-		for (int i = 0; i < packets_to_receive; i++) {
-			if (item_actions[i]) {
-				stop_watch(folder_path);
-				get_file(items[i].name, 1);
-				start_watch(folder_path);
+		if (dirty == 0) {
+			for (int i = 0; i < packets_to_receive; i++) {
+				char filename [MAXNAME];
+				struct stat buffer;
+				strcpy(filename, folder_path);
+				strcat(filename, "/");
+				strcat(filename, items[i].name);
 				
+				if (stat(filename, &buffer) == -1)
+					item_actions[i] = 1;
+				else {
+					if (difftime(buffer.st_mtime, items[i].mtime) < 0) // positivo quando tá mais nova que o server
+						  item_actions[i] = 1;
+				}
+			}
+			
+			for (int i = 0; i < packets_to_receive; i++) {
+				if (item_actions[i]) {
+					stop_watch(folder_path);
+					if (get_file(items[i].name, 1) == -1) {
+						printf("Sync client failed.\n");
+						start_watch(folder_path);
+						break;
+					}
+					start_watch(folder_path);
+					
+				}
 			}
 		}
-		
 		pthread_mutex_unlock(&syncing_client);
 	}
 	
@@ -464,7 +480,7 @@ void send_file(char *file) {
 	pthread_mutex_unlock(&busy_client);
 }
 
-void get_file(char *file, int local) { // 0 = local, 1 = sync_dir
+int get_file(char *file, int local) { // 0 = local, 1 = sync_dir
     char buf[PACKET_SIZE];
     char full_path[MAXNAME+10];
     Packet packet;
@@ -490,12 +506,15 @@ void get_file(char *file, int local) { // 0 = local, 1 = sync_dir
 
     if(ack.util >= 0) {
         std::vector<BackupServer> null;
-        receive_file(full_path, ack.util, 0, socket_id, false, null);
+        if (receive_file(full_path, ack.util, 0, socket_id, false, null) == -1)
+			return -1;
     }
     else
         printf("This file does not exists!\n");
         
     pthread_mutex_unlock(&busy_client);
+    
+    return 0;
 }
 
 void close_session() {

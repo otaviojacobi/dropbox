@@ -135,7 +135,7 @@ int match_ack_packet(Ack *ack, Packet *packet) {
     return ack->packet_id == packet->packet_id;
 }
 
-void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int socket_id, int send_to_backup, std::vector<BackupServer> backups) {
+int receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int socket_id, int send_to_backup, std::vector<BackupServer> backups) {
 
 
     FILE *file_opened = fopen(path_file, "w+");
@@ -152,7 +152,8 @@ void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int s
 
     if (file_opened) {
         do {
-            receive_packet(buf, socket_id, &si_other, &slen);
+            if (receive_packet(buf, socket_id, &si_other, &slen) == -1)
+				return -1;
             memcpy(&packet, buf, PACKET_SIZE);
 
             if(send_to_backup) {
@@ -175,6 +176,8 @@ void receive_file(char *path_file, uint32_t file_size, uint32_t packet_id, int s
         } while(packets_received <= block_amount);
 
         fclose(file_opened);
+        
+        return 0;
 
        // if (ferror(file_opened)) {
             //kill("Error writing file\n");
@@ -195,7 +198,7 @@ int receive_packet(char *buffer, int socket_id, struct sockaddr_in *si_other, un
 
     //try to receive the ack, this is a blocking call
     if ((recv_len = recvfrom(socket_id, buffer, PACKET_SIZE, 0, (struct sockaddr *) si_other, slen)) == -1)
-        kill("Failed to receive packet...\n");
+        return -1;
 
     return recv_len;
 }

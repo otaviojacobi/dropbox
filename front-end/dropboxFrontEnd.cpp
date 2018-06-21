@@ -151,7 +151,7 @@ void receive_packets_from_server(int total_packets) {
 
         //try to receive some data, this is a blocking call
         if ((recv_len = recvfrom(socket_id_leader, &packet, PACKET_SIZE, 0, (struct sockaddr *) &si_leader, &slen)) == -1)
-            kill("Failed to receive data from server leader...\n");
+            { printf("Failed to receive data from server leader...\n"); return;}
         packets_received++;
 
         printf("Received packet from %s:%d\n", inet_ntoa(si_leader.sin_addr), ntohs(si_leader.sin_port));

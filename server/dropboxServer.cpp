@@ -212,6 +212,7 @@ void* handle_user(void* args) {
     FILE *file;
     uint32_t packet_id = 0;
     int32_t file_size;
+    pthread_mutex_t busy_client;
     struct utimbuf file_times;
     int file_amount;
 
@@ -245,7 +246,8 @@ void* handle_user(void* args) {
 
                 create_ack(&ack, packet.packet_id, packet.packet_info);
                 send_ack(&ack, socket_id, &si_client, slen);
-
+				
+				pthread_mutex_lock(&busy_client);
                 receive_file(path_file, packet.packet_info, packet.packet_id, socket_id, true, backups);
                 if(!get_file_metadata(&file_metadata, packet_data, socket_id, packet.packet_info))
                     clients[socket_id].info.push_back(file_metadata);
@@ -254,6 +256,7 @@ void* handle_user(void* args) {
 				file_times.actime = file_metadata.times.st_atime;
 				
 				utime(path_file, &file_times);
+				pthread_mutex_unlock(&busy_client);
                 break;
 
             case Download_type:
@@ -263,8 +266,9 @@ void* handle_user(void* args) {
                 send_ack(&ack, socket_id, &si_client, slen);
                 if(file_size == -1) break;
                 fclose(file);
-                
+                pthread_mutex_lock(&busy_client);
                 packet_id = send_file_chunks(path_file, socket_id, &si_client, slen, packet_id, 'c');
+                pthread_mutex_unlock(&busy_client);
                 break;
 
             case List_type:
@@ -295,10 +299,11 @@ void* handle_user(void* args) {
 
                 create_ack(&ack, packet.packet_id, 0);
                 send_ack(&ack, socket_id, &si_client, slen);
-
+				pthread_mutex_lock(&busy_client);
                 if(remove(path_file) != 0)  {
                     printf("Error: unable to delete the file %s\n", path_file);
                 }
+                pthread_mutex_unlock(&busy_client);
                 break;
 
             default: printf("The packet type is not supported!\n");
