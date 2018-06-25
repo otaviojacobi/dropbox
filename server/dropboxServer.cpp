@@ -707,7 +707,7 @@ void backup_dealing_login(Packet packet, int socket_id, struct sockaddr_in *si_o
     int is_online = backup_check_if_online(host);
     ClientDevice client_device;
     client_device.port = packet.packet_info;
-    strcpy(client_device.device, inet_ntoa(si_other->sin_addr));
+    strcpy(client_device.device, packet.data);
 
     if(is_online) {
         backup_clients[is_online-1].devices.push_back(client_device);
